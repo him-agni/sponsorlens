@@ -19,7 +19,18 @@ uv sync
 uv run uvicorn app.main:app --reload
 ```
 
-Check the model connection at http://localhost:8000/api/ping-model.
+Check the model connection at http://localhost:8000/api/ping-model, or run the full setup check (both models, rate limits, JSON mode and Tavily):
+
+```bash
+uv run python -m scripts.check_setup
+```
+
+Tests use a fake model and spend no credits. The eval runs 15 invented postings through the real models and scores the verdicts:
+
+```bash
+uv run pytest
+uv run python -m scripts.eval
+```
 
 ```bash
 cd web
