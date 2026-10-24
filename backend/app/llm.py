@@ -5,9 +5,9 @@ from openai import AsyncOpenAI
 from app.config import settings
 
 
-def make_client() -> AsyncOpenAI:
+def make_client(max_retries: int = 2) -> AsyncOpenAI:
     """Token Factory is OpenAI-compatible, so the official SDK works with its base URL."""
-    return AsyncOpenAI(base_url=settings.nebius_base_url, api_key=settings.nebius_api_key)
+    return AsyncOpenAI(base_url=settings.nebius_base_url, api_key=settings.nebius_api_key, max_retries=max_retries)
 
 
 class ChatModel(Protocol):
@@ -18,7 +18,8 @@ class ChatModel(Protocol):
 
 class TokenFactoryModel:
     def __init__(self, client: AsyncOpenAI | None = None, max_tokens: int = 4096) -> None:
-        self.client = client or make_client()
+        # The engine's GuardedModel owns retries, so the SDK's own are off and every retry is counted.
+        self.client = client or make_client(max_retries=0)
         self.max_tokens = max_tokens
 
     async def complete(self, model: str, messages: list[dict]) -> str:
