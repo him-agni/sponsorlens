@@ -1,0 +1,30 @@
+# Render Blueprint: the FastAPI engine as a free web service and the React app as a static site. $0.
+# The free web service sleeps when idle and wakes in about a minute; its disk is wiped on sleep.
+services:
+  - type: web
+    name: sponsorlens-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install uv && uv export --frozen --no-dev --no-hashes --no-emit-project -o requirements.txt && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: NEBIUS_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      # Must match the static site's URL below; a JSON list.
+      - key: CORS_ORIGINS
+        value: '["https://sponsorlens-web.onrender.com"]'
+
+  - type: web
+    name: sponsorlens-web
+    runtime: static
+    rootDir: web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Must match the API service's URL above.
+      - key: VITE_API_URL
+        value: https://sponsorlens-api.onrender.com
