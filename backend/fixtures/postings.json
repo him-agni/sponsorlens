@@ -1,0 +1,285 @@
+[
+  {
+    "id": "f01-sponsorship-offered",
+    "note": "Plain offer of H-1B sponsorship and transfers",
+    "signals": ["sponsorship_offered"],
+    "expected": {"ead": "clear", "opt": "clear", "h1b": "clear", "green_card": "clear"},
+    "text": [
+      "Larkspur Analytics - Senior Data Engineer (Austin, TX)",
+      "",
+      "About the role",
+      "You will design batch and streaming pipelines that feed our forecasting models, and mentor two junior engineers.",
+      "",
+      "What you bring",
+      "- 5+ years building data pipelines in Python or Scala",
+      "- Experience with Spark, Airflow and a cloud warehouse",
+      "",
+      "Immigration",
+      "We sponsor H-1B visas and support H-1B transfers for qualified candidates.",
+      "",
+      "Larkspur Analytics is an equal opportunity employer."
+    ]
+  },
+  {
+    "id": "f02-no-sponsorship",
+    "note": "Standard no-sponsorship-now-or-future line",
+    "signals": ["no_sponsorship"],
+    "expected": {"ead": "clear", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Tidewater Freight Systems is hiring a Backend Engineer (Remote, US).",
+      "",
+      "Responsibilities",
+      "- Build and maintain the APIs behind our shipment tracking platform",
+      "- Own services end to end, from design to on-call",
+      "",
+      "Requirements",
+      "- 3+ years with Go or Java",
+      "- Comfort with PostgreSQL and message queues",
+      "",
+      "Applicants must be authorized to work in the United States without the need for employer sponsorship, now or in the future."
+    ]
+  },
+  {
+    "id": "f03-us-citizens-only",
+    "note": "Citizens only, stated directly",
+    "signals": ["us_citizens_only"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "blocked"},
+    "text": [
+      "Position: Systems Administrator II",
+      "Company: Granite Ridge Public Services",
+      "Location: Sacramento, CA",
+      "",
+      "Duties include patching and monitoring Linux and Windows servers, managing backups, and supporting field staff.",
+      "",
+      "Eligibility: This position is open to U.S. citizens only.",
+      "",
+      "Salary range: $88,000 - $104,000 per year."
+    ]
+  },
+  {
+    "id": "f04-clearance-required",
+    "note": "Active clearance required",
+    "signals": ["security_clearance"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "blocked"},
+    "text": [
+      "Halcyon Mission Labs - Embedded Software Engineer (Huntsville, AL)",
+      "",
+      "Join the team writing flight software for our next-generation sensor payloads.",
+      "",
+      "Required qualifications",
+      "- BS in Computer Engineering or a related field",
+      "- 4+ years of C and C++ on real-time operating systems",
+      "- Active Secret clearance required.",
+      "",
+      "Preferred",
+      "- Experience with DO-178C"
+    ]
+  },
+  {
+    "id": "f05-export-control",
+    "note": "ITAR US-person requirement",
+    "signals": ["export_control"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Ferrous Dynamics is looking for a Mechanical Design Engineer in Denver, CO.",
+      "",
+      "You will own CAD models and tolerance analysis for propulsion test hardware.",
+      "",
+      "Requirements",
+      "- 2+ years with SolidWorks or NX",
+      "- Hands-on test lab experience",
+      "",
+      "Due to export control regulations (ITAR), candidates must be U.S. persons as defined by 22 CFR 120.62."
+    ]
+  },
+  {
+    "id": "f06-citizens-or-permanent-residents",
+    "note": "Citizen or green card holder",
+    "signals": ["citizens_or_permanent_residents"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Bramblecrest Health - Clinical Data Analyst (Columbus, OH, hybrid)",
+      "",
+      "Turn messy claims and EHR data into dashboards our care teams use daily.",
+      "",
+      "Qualifications",
+      "- Strong SQL and one of Tableau or Power BI",
+      "- Familiarity with HIPAA",
+      "- Must be a U.S. citizen or lawful permanent resident.",
+      "",
+      "Benefits include medical, dental, a 401(k) match and tuition support."
+    ]
+  },
+  {
+    "id": "f07-e-verify-only",
+    "note": "E-Verify is the only work-authorization statement",
+    "signals": ["e_verify"],
+    "expected": {"ead": "clear", "opt": "unclear", "h1b": "unclear", "green_card": "clear"},
+    "text": [
+      "Brightline Ledger - Frontend Engineer (New York, NY)",
+      "",
+      "Build the React screens accountants use to close their books each month.",
+      "",
+      "You have",
+      "- 3+ years with React and TypeScript",
+      "- An eye for accessible, fast interfaces",
+      "",
+      "Brightline Ledger participates in E-Verify.",
+      "We are an equal opportunity employer and value diversity at our company."
+    ]
+  },
+  {
+    "id": "f08-silent",
+    "note": "Nothing about work authorization at all",
+    "signals": [],
+    "expected": {"ead": "clear", "opt": "unclear", "h1b": "unclear", "green_card": "clear"},
+    "text": [
+      "Quillfeather Software - Machine Learning Engineer (Seattle, WA)",
+      "",
+      "Help us ship ranking models that decide what millions of readers see first.",
+      "",
+      "What you'll do",
+      "- Train and evaluate ranking and retrieval models",
+      "- Work with product teams to run online experiments",
+      "",
+      "What we look for",
+      "- 3+ years of applied ML in production",
+      "- Strong Python and PyTorch",
+      "",
+      "Compensation: $165,000 - $210,000 base, plus equity."
+    ]
+  },
+  {
+    "id": "f09-hard-sponsorship-in-benefits",
+    "note": "Hard: sponsorship appears only as a bullet under benefits",
+    "signals": ["sponsorship_offered"],
+    "expected": {"ead": "clear", "opt": "clear", "h1b": "clear", "green_card": "clear"},
+    "text": [
+      "Copperleaf Robotics - Perception Engineer (Pittsburgh, PA)",
+      "",
+      "Develop the camera and lidar perception stack for our warehouse robots.",
+      "",
+      "Requirements",
+      "- MS or PhD in robotics, computer vision or a related field",
+      "- Strong C++ and Python",
+      "",
+      "Perks and benefits",
+      "- Fully covered health insurance",
+      "- Immigration and visa sponsorship support",
+      "- Annual learning budget of $2,000",
+      "- Commuter benefits"
+    ]
+  },
+  {
+    "id": "f10-hard-ability-to-obtain-clearance",
+    "note": "Hard: clearance not held yet, but candidate must be able to obtain one",
+    "signals": ["security_clearance"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "blocked"},
+    "text": [
+      "Sentinel Arc Systems - Cloud Security Engineer (Arlington, VA)",
+      "",
+      "Harden and monitor the cloud environments that host our government analytics products.",
+      "",
+      "Basic qualifications",
+      "- 3+ years in cloud security on AWS or Azure",
+      "- Experience with SIEM tooling and incident response",
+      "- Ability to obtain and maintain a U.S. government security clearance.",
+      "",
+      "This role is hybrid, with three days a week on site."
+    ]
+  },
+  {
+    "id": "f11-hard-contradictory",
+    "note": "Hard: offers sponsorship, then rules it out in the legal footer",
+    "signals": ["sponsorship_offered", "no_sponsorship"],
+    "expected": {"ead": "clear", "opt": "unclear", "h1b": "unclear", "green_card": "clear"},
+    "text": [
+      "Marigold Payments - Staff Software Engineer, Risk (San Francisco, CA)",
+      "",
+      "Lead the design of real-time fraud scoring across our card network.",
+      "",
+      "Why join us",
+      "- Meaningful equity and a competitive salary",
+      "- We are happy to sponsor visas for exceptional candidates.",
+      "",
+      "Requirements",
+      "- 8+ years of backend engineering",
+      "- Experience with streaming systems such as Kafka or Flink",
+      "",
+      "Legal",
+      "Candidates must be able to work in the US without sponsorship. Marigold Payments is an equal opportunity employer."
+    ]
+  },
+  {
+    "id": "f12-no-sponsorship-and-e-verify",
+    "note": "No sponsorship, plus an E-Verify statement",
+    "signals": ["no_sponsorship", "e_verify"],
+    "expected": {"ead": "clear", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Oakhollow Energy - Data Scientist (Houston, TX)",
+      "",
+      "Forecast grid demand and battery dispatch using weather and market data.",
+      "",
+      "Requirements",
+      "- MS in statistics, CS or a quantitative field",
+      "- Time-series forecasting experience",
+      "",
+      "Oakhollow Energy will not sponsor applicants for work visas for this position.",
+      "Oakhollow Energy is an E-Verify employer."
+    ]
+  },
+  {
+    "id": "f13-hard-sponsor-for-clearance",
+    "note": "Hard: 'sponsor' refers to a clearance, not a visa",
+    "signals": ["security_clearance"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "blocked"},
+    "text": [
+      "Bluefin Applied Research - Software Engineer, Signal Processing (San Diego, CA)",
+      "",
+      "Write and optimize DSP code for underwater acoustic sensors.",
+      "",
+      "Requirements",
+      "- BS in Electrical Engineering, Computer Science or Physics",
+      "- Experience with C++ and MATLAB",
+      "",
+      "We will sponsor the selected candidate for a Secret security clearance, which must be obtained within six months of hire."
+    ]
+  },
+  {
+    "id": "f14-export-control-and-no-sponsorship",
+    "note": "Two restrictions; strictest wins per status",
+    "signals": ["export_control", "no_sponsorship"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Ironveil Semiconductors - Process Integration Engineer (Phoenix, AZ)",
+      "",
+      "Own yield improvement projects on our 28nm line.",
+      "",
+      "Requirements",
+      "- MS or PhD in Materials Science, Chemical or Electrical Engineering",
+      "- Fab experience with SPC and DOE",
+      "",
+      "This position requires access to technology subject to U.S. export controls (EAR); applicants must be U.S. persons.",
+      "We are unable to provide visa sponsorship for this role."
+    ]
+  },
+  {
+    "id": "f15-distractor-sponsor-events",
+    "note": "Distractor: 'sponsor' and 'US-based' with no work-authorization meaning",
+    "signals": [],
+    "expected": {"ead": "clear", "opt": "unclear", "h1b": "unclear", "green_card": "clear"},
+    "text": [
+      "Fernhill Labs - Developer Advocate (Remote, US-based)",
+      "",
+      "Fernhill Labs proudly sponsors local hackathons and open-source maintainers.",
+      "",
+      "In this role you will",
+      "- Write tutorials and sample apps for our SDKs",
+      "- Speak at the meetups and conferences we sponsor",
+      "",
+      "You must live in the United States and be able to travel up to 25% of the time.",
+      "",
+      "Salary: $130,000 - $155,000."
+    ]
+  }
+]
