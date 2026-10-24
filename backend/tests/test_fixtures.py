@@ -3,7 +3,7 @@ import pytest
 from app.normalize import normalize
 from app.rules import decide
 from app.schemas import Analysis, Signal
-from scripts.eval import load_fixtures
+from app.fixtures import load_fixtures
 
 FIXTURES = load_fixtures()
 

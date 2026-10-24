@@ -6,37 +6,17 @@ Phase 1 gate: at least 12 of 15 fixtures right for all four statuses, with zero 
 
 import argparse
 import asyncio
-import json
 import sys
 import time
-from pathlib import Path
-
-from pydantic import BaseModel
 
 from app.analyzer import PROMPT_VERSION, Analyzer
 from app.config import settings
+from app.fixtures import Fixture, load_fixtures
 from app.llm import TokenFactoryModel
 from app.rules import decide
-from app.schemas import Analysis, Label, SignalType, Status
+from app.schemas import Analysis
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "postings.json"
 GATE_PASSES = 12
-
-
-class Fixture(BaseModel):
-    id: str
-    note: str
-    signals: list[SignalType]
-    expected: dict[Status, Label]
-    text: list[str]
-
-    @property
-    def posting(self) -> str:
-        return "\n".join(self.text)
-
-
-def load_fixtures() -> list[Fixture]:
-    return [Fixture.model_validate(f) for f in json.loads(FIXTURES.read_text(encoding="utf-8"))]
 
 
 async def run_one(analyzer: Analyzer, fixture: Fixture, limit: asyncio.Semaphore) -> tuple[Analysis | None, float, str]:
