@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,6 +17,17 @@ class Settings(BaseSettings):
     nano_model: str = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
     ultra_model: str = "nvidia/Nemotron-3-Ultra-550b-a55b"
     tavily_api_key: str = ""
+
+    # "fake" runs the engine on FakeModel: no key, no cost, and /api/rehearsal is enabled.
+    model_backend: Literal["live", "fake"] = "live"
+    workers: int = 8
+    queue_capacity: int = 32
+    # Measured limits on Oct 24: Nano 100 RPM, Ultra 300 RPM and 200K TPM. Eight calls at a few
+    # seconds each stays well under both.
+    model_concurrency: int = 8
+    fake_latency: float = 0.4
+
+    cors_origins: list[str] = ["http://localhost:5173"]
 
 
 settings = Settings()

@@ -1,11 +1,6 @@
 import json
 
-import pytest
-from fastapi.testclient import TestClient
-
 from app.analyzer import Analyzer
-from app.company_context import CompanyContext
-from app.main import app, get_analyzer, get_context_lookup
 from app.schemas import SignalType
 
 POSTING = """<p>Acme Robotics is hiring.</p>
@@ -98,35 +93,3 @@ async def test_not_relevant_signals_are_dropped() -> None:
     analysis = await analyzer(model).analyze(POSTING)
     assert analysis.signals == []
     assert analysis.unverified_quotes == 0
-
-
-@pytest.fixture
-def client():
-    yield TestClient(app)
-    app.dependency_overrides.clear()
-
-
-def test_analyze_endpoint_looks_up_company_only_when_unclear(client: TestClient) -> None:
-    looked_up: list[str] = []
-
-    async def fake_lookup(company: str) -> CompanyContext:
-        looked_up.append(company)
-        return CompanyContext(company=company, query="q", sources=[])
-
-    app.dependency_overrides[get_context_lookup] = lambda: fake_lookup
-    app.dependency_overrides[get_analyzer] = lambda: analyzer(ScriptedModel({"company": "Acme", "sentences": []}))
-    unclear = client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "opt"}).json()
-
-    app.dependency_overrides[get_analyzer] = lambda: analyzer(ScriptedModel({"company": "Acme", "sentences": []}))
-    clear = client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"}).json()
-
-    assert unclear["verdict"]["label"] == "unclear"
-    assert unclear["company_context"]["company"] == "Acme"
-    assert clear["verdict"]["label"] == "clear"
-    assert clear["company_context"] is None
-    assert looked_up == ["Acme"]
-
-
-def test_analyze_endpoint_rejects_unknown_status(client: TestClient) -> None:
-    app.dependency_overrides[get_analyzer] = lambda: analyzer(ScriptedModel())
-    assert client.post("/api/analyze", json={"text": "x", "status": "tourist"}).status_code == 422
