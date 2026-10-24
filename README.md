@@ -32,11 +32,23 @@ uv run pytest
 uv run python -m scripts.eval
 ```
 
+Rehearse a 200-posting batch on a fake model and watch the queue fill, hold at capacity and drain. It costs nothing:
+
+```bash
+uv run python -m scripts.rehearse
+```
+
+To run the whole API without a key, set `MODEL_BACKEND=fake`. Then `POST /api/rehearsal` starts a fake batch and `GET /metrics` shows queue depth, busy workers, retries and latency percentiles.
+
 ```bash
 cd web
 npm install
 npm run dev
 ```
+
+## Deploy
+
+`render.yaml` deploys the API as a Render free web service and the web app as a Render static site, for $0. In Render, choose New → Blueprint and pick this repo, then enter `NEBIUS_API_KEY` and `TAVILY_API_KEY` when asked. The free service sleeps when idle and takes about a minute to wake.
 
 ## Where Nebius and NVIDIA are used
 
