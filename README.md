@@ -40,6 +40,22 @@ uv run python -m scripts.rehearse
 
 To run the whole API without a key, set `MODEL_BACKEND=fake`. Then `POST /api/rehearsal` starts a fake batch and `GET /metrics` shows queue depth, busy workers, retries and latency percentiles.
 
+### Batches of real postings
+
+`POST /api/batch` with `{"companies": [...], "per_company": 10, "status": "h1b"}` fetches US postings from the preset Greenhouse boards (`GET /api/presets`), one fetcher per company, and runs them through the engine. `GET /api/batch/{id}?status=opt` returns progress and a verdict per posting for any status, without another model call.
+
+Every finished posting is written to an append-only log (`backend/data/sponsorlens.jsonl`, set by `LOG_PATH`) before it counts as done. On startup the log is replayed: the cache is refilled and unfinished batches resume from their sources. To see it, kill the server mid-batch and restart it. This script does that on the fake model, so it costs nothing:
+
+```bash
+uv run python -m scripts.kill_test
+```
+
+It passes when the batch finishes and no posting finished before the kill is sent to the model again.
+
+### Job data
+
+Batches read the [Greenhouse Job Board API](https://docs.greenhouse.io/job-board.html), whose GET endpoints are public ("authentication is not required for any GET endpoints"); its documentation states no separate terms or rate limits. SponsorLens reads only published jobs, fetches each board once per batch, keeps posting text in memory only while analyzing it, never stores or republishes it (the log holds sources, titles and the quoted signals), and links every verdict to the original posting.
+
 ```bash
 cd web
 npm install
