@@ -2,7 +2,7 @@
 # The free web service sleeps when idle and wakes in about a minute; its disk is wiped on sleep.
 services:
   - type: web
-    name: sponsorlens-api
+    name: sponsorlens
     runtime: python
     plan: free
     rootDir: backend
@@ -27,4 +27,4 @@ services:
     envVars:
       # Must match the API service's URL above.
       - key: VITE_API_URL
-        value: https://sponsorlens-api.onrender.com
+        value: https://sponsorlens.onrender.com
