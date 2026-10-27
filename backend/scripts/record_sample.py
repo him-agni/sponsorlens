@@ -64,7 +64,7 @@ def main() -> int:
             break
         time.sleep(1)
     timeline.append(api.get("/metrics").json())
-    _save("metrics.json", {"backend": backend, "recorded": recorded, "snapshots": timeline})
+    _save("metrics.json", {"backend": backend, "recorded": recorded, "snapshots": compact(timeline)})
 
     views = {status: api.get(f"/api/batch/{batch_id}", params={"status": status}).json() for status in STATUSES}
     _save("batch.json", {"backend": backend, "recorded": recorded, "views": views})
@@ -73,6 +73,13 @@ def main() -> int:
     print(f"{counters.get('model_calls', 0)} model calls, {counters.get('tokens_in', 0):,} tokens in, "
           f"{counters.get('tokens_out', 0):,} out, about ${counters.get('cost_micro_usd', 0) / 1e6:.2f}")
     return 0
+
+
+def compact(timeline: list[dict], every: int = 3) -> list[dict]:
+    """Every third snapshot, always ending on the last, so the web app replays the run three times faster.
+    Only the histogram the dashboard shows is kept."""
+    kept = timeline[::every] + ([timeline[-1]] if (len(timeline) - 1) % every else [])
+    return [{**s, "histograms": {k: v for k, v in s["histograms"].items() if k == "model_latency_ms"}} for s in kept]
 
 
 def _save(name: str, data: dict) -> None:
