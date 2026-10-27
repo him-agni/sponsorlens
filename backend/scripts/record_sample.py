@@ -5,6 +5,7 @@ once a second, then saves everything under web/public/sample/. Record from the l
 version that ships; a fake-model recording is marked as such in the file.
 
 Run from backend/: uv run python -m scripts.record_sample [--api http://localhost:8000] [--per-company 10]
+[--examples-only]
 """
 
 import argparse
@@ -31,6 +32,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--api", default="http://localhost:8000")
     parser.add_argument("--per-company", type=int, default=10)
+    parser.add_argument("--examples-only", action="store_true", help="re-record the examples and keep the batch")
     args = parser.parse_args()
     api = httpx.Client(base_url=args.api, timeout=300)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -46,6 +48,9 @@ def main() -> int:
         response.raise_for_status()
         examples.append({"id": fixture_id, "title": title, "text": text, "response": response.json()})
     _save("examples.json", {"backend": backend, "recorded": recorded, "examples": examples})
+    if args.examples_only:
+        print(f"Saved the examples to {OUT}")
+        return 0
 
     batch_id = api.post("/api/batch", json={"per_company": args.per_company, "status": "h1b"}).json()["id"]
     print(f"Batch {batch_id} started; recording /metrics once a second")

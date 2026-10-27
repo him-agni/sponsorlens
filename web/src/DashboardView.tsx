@@ -89,7 +89,16 @@ export default function DashboardView({ live }: { live: boolean }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Postings done" value={c.jobs_done ?? 0} note={c.jobs_failed ? `${c.jobs_failed} failed` : undefined} />
+        <Stat
+          label="Postings done"
+          value={c.jobs_done ?? 0}
+          note={[
+            c.jobs_failed ? `${c.jobs_failed} failed` : '',
+            c.cost_micro_usd ? `$${(c.cost_micro_usd / 1e6).toFixed(2)} of model calls` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ') || undefined}
+        />
         <Stat label="Queued" value={`${g.queue_depth ?? 0} / ${g.queue_capacity ?? 0}`} note="across all shards" />
         <Stat label="Model calls in flight" value={`${g.model_in_flight ?? 0} / ${g.model_concurrency ?? 0}`} note="capped by the rate limit" />
         <Stat label="Tokens per second" value={(points.at(-1)?.tokensPerSecond ?? 0).toLocaleString()} />
