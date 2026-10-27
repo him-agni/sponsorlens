@@ -186,7 +186,11 @@ function ContextPanel({ company, context }: { company: string | null; context: C
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-ink-2">No web results are available right now. Ask the recruiter directly.</p>
+        <p className="mt-2 text-sm text-ink-2">
+          {context
+            ? `The web search found nothing about ${company ?? 'this company'} itself, only general lists. Ask the recruiter directly.`
+            : 'Web context is not available right now. Ask the recruiter directly.'}
+        </p>
       )}
       <p className="mt-3 text-xs text-muted">Search results via Tavily. They give background only and never change the verdict.</p>
     </Card>

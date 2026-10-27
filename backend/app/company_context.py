@@ -44,5 +44,17 @@ async def lookup(company: str, max_results: int = 3) -> CompanyContext | None:
         log.warning("Tavily search failed for %s", company, exc_info=True)
         return None
     sources = [Source(title=r["title"], url=r["url"], snippet=r["content"]) for r in reply.get("results", [])]
-    _found[company] = CompanyContext(company=company, query=query, sources=sources)
+    about = [s for s in sources if mentions(s, company)]
+    _found[company] = CompanyContext(company=company, query=query, sources=about)
     return _found[company]
+
+
+def mentions(source: Source, company: str) -> bool:
+    """Search often returns generic lists of sponsors; keep only sources that name the company.
+
+    Matches the full name, or its first word when that is distinctive enough (four letters or more).
+    """
+    text = f"{source.title} {source.url} {source.snippet}".lower()
+    name = company.lower().strip()
+    first = name.split()[0] if name else ""
+    return name in text or (len(first) >= 4 and first in text)

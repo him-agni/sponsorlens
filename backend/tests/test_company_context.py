@@ -50,6 +50,24 @@ async def test_lookup_returns_cited_sources(monkeypatch) -> None:
     assert "Acme" in FakeTavily.queries[-1]
 
 
+class GenericTavily(FakeTavily):
+    async def search(self, query: str, **kwargs) -> dict:
+        return {
+            "results": [
+                {"title": "Top 15 companies that sponsor H1B visas", "url": "https://example.com/top", "content": "Deloitte..."},
+                {"title": "Acme Corp H-1B filings", "url": "https://example.com/acme", "content": "40 LCAs."},
+            ]
+        }
+
+
+async def test_sources_that_do_not_name_the_company_are_dropped(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "tavily_api_key", "tvly-test")
+    monkeypatch.setattr(company_context, "AsyncTavilyClient", GenericTavily)
+    context = await company_context.lookup("Acme")
+    assert [s.url for s in context.sources] == ["https://example.com/acme"]
+    assert (await company_context.lookup("Marigold Payments")).sources == []
+
+
 async def test_lookup_failure_returns_none(monkeypatch) -> None:
     monkeypatch.setattr(settings, "tavily_api_key", "tvly-test")
     monkeypatch.setattr(company_context, "AsyncTavilyClient", BrokenTavily)
