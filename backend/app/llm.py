@@ -34,7 +34,13 @@ class TokenFactoryModel:
             response_format={"type": "json_object"},
         )
         if self.metrics and reply.usage:
-            # Completion tokens include the reasoning tokens, which are billed as output.
-            self.metrics.inc("tokens_in", reply.usage.prompt_tokens)
-            self.metrics.inc("tokens_out", reply.usage.completion_tokens)
+            self.record_usage(model, reply.usage.prompt_tokens, reply.usage.completion_tokens)
         return reply.choices[0].message.content or ""
+
+    def record_usage(self, model: str, tokens_in: int, tokens_out: int) -> None:
+        """Count tokens and their cost. Completion tokens include reasoning tokens, which bill as output."""
+        self.metrics.inc("tokens_in", tokens_in)
+        self.metrics.inc("tokens_out", tokens_out)
+        price_in, price_out = settings.model_prices.get(model, (0.0, 0.0))
+        # Millionths of a dollar, so the counter stays an integer.
+        self.metrics.inc("cost_micro_usd", round(tokens_in * price_in + tokens_out * price_out))

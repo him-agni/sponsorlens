@@ -63,7 +63,10 @@ def main() -> int:
 
     views = {status: api.get(f"/api/batch/{batch_id}", params={"status": status}).json() for status in STATUSES}
     _save("batch.json", {"backend": backend, "recorded": recorded, "views": views})
+    counters = timeline[-1]["counters"]
     print(f"Saved a {backend}-model sample to {OUT}")
+    print(f"{counters.get('model_calls', 0)} model calls, {counters.get('tokens_in', 0):,} tokens in, "
+          f"{counters.get('tokens_out', 0):,} out, about ${counters.get('cost_micro_usd', 0) / 1e6:.2f}")
     return 0
 
 

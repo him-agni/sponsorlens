@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     nano_model: str = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
     ultra_model: str = "nvidia/Nemotron-3-Ultra-550b-a55b"
     tavily_api_key: str = ""
+    # USD per million tokens (input, output), from the same catalog. Reasoning tokens bill as output.
+    model_prices: dict[str, tuple[float, float]] = {
+        "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B": (0.06, 0.24),
+        "nvidia/Nemotron-3-Ultra-550b-a55b": (1.0, 3.0),
+    }
 
     # "fake" runs the engine on FakeModel: no key, no cost, and /api/rehearsal is enabled.
     model_backend: Literal["live", "fake"] = "live"
