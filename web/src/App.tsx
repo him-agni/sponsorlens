@@ -1,53 +1,93 @@
-import { useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
+import { loadSample, type SampleExamples, type Status } from './api'
+import { BatchView } from './BatchView'
+import { CheckView } from './CheckView'
+import { Card, EngineBanner, StatusPicker } from './components'
+import { useEngine } from './engine'
+import { useUrlParam } from './lib'
 
-// Empty in development, where Vite proxies to the local API; the API's URL on Render.
-const API_URL = import.meta.env.VITE_API_URL ?? ''
+// The charts library is most of the bundle, so the dashboard loads only when its tab opens.
+const DashboardView = lazy(() => import('./DashboardView'))
 
-type HealthResult = {
-  status: string
-  latency_ms: number
-}
+const VIEWS = ['check', 'batch', 'engine'] as const
+const STATUS_IDS = ['ead', 'opt', 'h1b', 'green_card'] as const
+const TAB_NAMES = { check: 'Check a posting', batch: 'Batch', engine: 'Engine' }
 
 function App() {
-  const [result, setResult] = useState<HealthResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [view, setView] = useUrlParam<(typeof VIEWS)[number]>('view', 'check', VIEWS)
+  const [status, setStatus] = useUrlParam<Status>('status', 'h1b', STATUS_IDS)
+  const engine = useEngine()
+  const live = engine === 'live'
+  const [sample, setSample] = useState<{ recorded: string; backend: string }>()
 
-  async function check() {
-    setLoading(true)
-    setError(null)
-    const start = performance.now()
-    try {
-      const response = await fetch(`${API_URL}/health`)
-      const body = await response.json()
-      if (!response.ok) throw new Error(body.detail ?? response.statusText)
-      setResult({ ...body, latency_ms: Math.round(performance.now() - start) })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => {
+    loadSample<SampleExamples>('examples')
+      .then(({ recorded, backend }) => setSample({ recorded, backend }))
+      .catch(() => {})
+  }, [])
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-16">
-      <h1 className="text-3xl font-semibold">SponsorLens</h1>
-      <p className="mt-2 text-gray-600">Check whether the engine is awake. On the free tier it sleeps when idle and takes about a minute to wake.</p>
-      <button
-        onClick={check}
-        disabled={loading}
-        className="mt-6 rounded-lg bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-      >
-        {loading ? 'Waking the engine…' : 'Check the engine'}
-      </button>
-      {error && <p className="mt-4 text-red-700">{error}</p>}
-      {result && (
-        <div className="mt-4 rounded-lg border border-gray-200 p-4">
-          <p className="font-medium">Engine status: {result.status}</p>
-          <p className="mt-1 text-sm text-gray-500">Answered in {result.latency_ms} ms</p>
+    <div className="flex min-h-screen flex-col">
+      <EngineBanner state={engine} recorded={sample?.recorded} backend={sample?.backend} />
+      <header className="border-b border-line">
+        <div className="mx-auto max-w-5xl px-4 pt-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">SponsorLens</h1>
+            <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
+              <span className={`size-2 rounded-full ${live ? 'bg-good' : 'bg-warning'}`} aria-hidden="true" />
+              {live ? 'Engine live' : 'Sample mode'}
+            </span>
+          </div>
+          <p className="mt-1 max-w-2xl text-ink-2">
+            Is this job open to someone with your work authorization? SponsorLens reads the posting and answers with the exact
+            lines that decide it.
+          </p>
+          <div className="mt-4">
+            <p className="mb-1.5 text-sm font-medium">Your status</p>
+            <StatusPicker value={status} onChange={setStatus} />
+          </div>
+          <nav className="mt-5 flex gap-1" aria-label="Views">
+            {VIEWS.map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                aria-current={view === v ? 'page' : undefined}
+                className={`-mb-px border-b-2 px-3 py-2 text-sm ${
+                  view === v ? 'border-ink font-medium text-ink' : 'border-transparent text-ink-2 hover:text-ink'
+                }`}
+              >
+                {TAB_NAMES[v]}
+              </button>
+            ))}
+          </nav>
         </div>
-      )}
-    </main>
+      </header>
+
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+        {view === 'check' && <CheckView status={status} onStatus={setStatus} live={live} />}
+        {view === 'batch' && <BatchView status={status} live={live} />}
+        {view === 'engine' && (
+          <Suspense fallback={<Card>Loading the dashboard…</Card>}>
+            <DashboardView key={String(live)} live={live} />
+          </Suspense>
+        )}
+      </main>
+
+      <footer className="border-t border-line">
+        <div className="mx-auto max-w-5xl px-4 py-6 text-sm text-ink-2">
+          <p>
+            Information, not legal advice. A verdict reflects only what the posting says; confirm with the employer or an
+            immigration attorney before you rely on it.
+          </p>
+          <p className="mt-2 text-muted">
+            Built with NVIDIA Nemotron on Nebius Token Factory, with web context from Tavily ·{' '}
+            <a href="https://github.com/him-agni/sponsorlens" className="underline hover:text-ink">
+              Source on GitHub
+            </a>
+          </p>
+        </div>
+      </footer>
+    </div>
   )
 }
 

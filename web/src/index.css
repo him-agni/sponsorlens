@@ -1,1 +1,65 @@
 @import "tailwindcss";
+
+/* Tokens from the data-viz reference palette. Status colors are fixed and always paired with an icon and a label. */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-page: #f9f9f7;
+  --color-surface: #fcfcfb;
+  --color-ink: #0b0b0b;
+  --color-ink-2: #52514e;
+  --color-muted: #6f6d68;
+  --color-grid: #e1e0d9;
+  --color-axis: #c3c2b7;
+  --color-line: rgba(11, 11, 11, 0.1);
+  --color-accent: #2a78d6;
+  --color-good: #0ca30c;
+  --color-good-ink: #006300;
+  --color-warning: #fab219;
+  --color-warning-ink: #7a5200;
+  --color-critical: #d03b3b;
+  --color-critical-ink: #b02a2a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-page: #0d0d0d;
+    --color-surface: #1a1a19;
+    --color-ink: #f0efec;
+    --color-ink-2: #c3c2b7;
+    --color-muted: #9a9890;
+    --color-grid: #2c2c2a;
+    --color-axis: #383835;
+    --color-line: rgba(255, 255, 255, 0.1);
+    --color-accent: #3987e5;
+    --color-good-ink: #3fc23f;
+    --color-warning-ink: #fab219;
+    --color-critical-ink: #ef7a7a;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-page: #0d0d0d;
+  --color-surface: #1a1a19;
+  --color-ink: #f0efec;
+  --color-ink-2: #c3c2b7;
+  --color-muted: #9a9890;
+  --color-grid: #2c2c2a;
+  --color-axis: #383835;
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-accent: #3987e5;
+  --color-good-ink: #3fc23f;
+  --color-warning-ink: #fab219;
+  --color-critical-ink: #ef7a7a;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
