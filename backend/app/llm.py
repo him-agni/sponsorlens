@@ -18,7 +18,9 @@ class ChatModel(Protocol):
 
 
 class TokenFactoryModel:
-    def __init__(self, client: AsyncOpenAI | None = None, max_tokens: int = 4096, metrics: Metrics | None = None) -> None:
+    # Reasoning counts against max_tokens. A long SpaceX posting took 3,066 tokens on Nano and once ran
+    # past 4,096 before writing any JSON, so the cap leaves room; only tokens produced are billed.
+    def __init__(self, client: AsyncOpenAI | None = None, max_tokens: int = 8192, metrics: Metrics | None = None) -> None:
         # The engine's GuardedModel owns retries, so the SDK's own are off and every retry is counted.
         self.client = client or make_client(max_retries=0)
         self.max_tokens = max_tokens
