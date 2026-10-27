@@ -35,6 +35,15 @@ Running notes for the hackathon feedback form. Add to it as things come up.
 - The one quote flaw was ours: flattening the posting to one line let a heading ("Legal") join the next sentence in a quote. Keeping line breaks fixed it.
 - Token Factory returned intermittent `503 Service Temporarily Unavailable` pages from nginx for a few minutes on Oct 24, even after the SDK's two retries. It recovered on its own. This makes the Phase 2 retry layer a must, not a nice-to-have.
 
+## Phase 4: a 200-posting live run (Oct 27)
+
+- 200 real postings from 20 public Greenhouse boards through Nano then Ultra cost $0.30: 303 calls, 348K tokens in, 474K out. Most of the output was reasoning, which is billed as output.
+- Latency had a long tail: p50 6.4 s, p95 79 s, max 101 s per call, all from reasoning length. The answer itself is a few hundred tokens.
+- 3 of 200 calls came back with no JSON at all. One long posting used 3,066 reasoning tokens on Nano, so with `max_tokens` 4096 the reasoning sometimes used up the budget before the answer started. Raising the cap and retrying fixed it. A per-request reasoning budget, separate from `max_tokens`, would make this predictable.
+- Turning reasoning off (`chat_template_kwargs: {enable_thinking: false}`) made Nano 3× faster but it copied an irrelevant sentence, so reasoning stays on. It was not obvious from the docs which reasoning controls Token Factory honors for Nemotron.
+- No 429s at 8 concurrent calls, and no 5xx during this run.
+- The Builder Program credit never arrived before the deadline week, so the whole build ran on the $25 promo credit, which was plenty.
+
 ## What worked well
 
 - The public model catalog JSON and the `llms.txt` docs index made it possible to plan model choice and rate limits before having a key.

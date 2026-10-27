@@ -24,7 +24,7 @@ The full plan, with its phase gates, lives in [build-plan.md](build-plan.md). Th
 | P1 Verdict for one posting | Sat Oct 24 | Done | Eval 15/15 for all four statuses, 0 unverified quotes (prompt `p1`) |
 | P2 Engine core, first deploy | Sun Oct 25 | Done Oct 27 | Rehearsal fills and drains the queues; web app reaches the API on Render ("Engine status: ok", 389 ms). Still to film: `/health` after the API wakes from sleep |
 | P3 Intake, shards, cache, log | Mon Oct 26 | Done Oct 27 | `scripts/kill_test.py`: killed mid-batch at 82/200, restarted, 82 returned from the log, 117 analysed, 1 cache hit, 0 postings finished twice |
-| P4 Web app and dashboard | Tue Oct 27 | Built Oct 27 | Checked in light, dark, desktop and 390 px phone width, live and sample mode, no console errors. Still to do: record the live sample, then have one new person explain a verdict back unaided |
+| P4 Web app and dashboard | Tue Oct 27 | Built Oct 27 | Checked in light, dark, desktop and 390 px phone width, live and sample mode, no console errors. Live sample recorded and committed. Still to do: the owner's husband checks the deployed site remotely and explains a verdict back unaided |
 | P5 Deploy, limits, benchmark | Wed Oct 28 | Not started | — |
 | P6 Video, README, submit | Thu Oct 29 | Not started | — |
 
@@ -42,8 +42,8 @@ These come from the owner and apply to every change.
 
 | Item | State |
 | --- | --- |
-| Nebius Token Factory | Key in `.env`. $25 promo credit arrived Oct 24. Builder Program credit still pending |
-| Tavily | **No key yet.** It is expected with the Builder Program credit. Until then the Tavily lookup returns nothing and the app still works |
+| Nebius Token Factory | Key in `.env`. $25 promo credit arrived Oct 24. The Builder Program credit never arrived; **the plan assumes only the $25.** Spent so far: well under $1 (eval, a 10-posting probe, the $0.30 sample run) |
+| Tavily | Free-plan key in `.env` since Oct 27 (1,000 searches a month, no card) |
 | Render | Free tier, no card. Services: `sponsorlens` (API, created by hand because the blueprint's `sponsorlens-api` step failed) and `sponsorlens-web` (static site) |
 | Render env vars | API: `CORS_ORIGINS=["https://sponsorlens-web.onrender.com"]`. Web: `VITE_API_URL=https://sponsorlens.onrender.com`. Vite bakes `VITE_API_URL` in at build time, so changing it needs a web redeploy |
 
@@ -96,7 +96,7 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `web/src/BatchView.tsx` | Start a batch from the presets, poll it, filter by verdict, 50 rows at a time |
 | `web/src/DashboardView.tsx` | Lazy-loaded. Stat tiles, shard meters, three single-series Recharts lines; SSE live, or the sample replayed |
 | `web/src/lib.ts`, `components.tsx`, `api.ts` | Status names, label styles, URL state, quote highlighting; shared UI; API types and sample loading |
-| `web/public/sample/` | The recorded sample run. **Not committed yet**: the copy on disk is a fake-model recording |
+| `web/public/sample/` | The recorded live sample run (Oct 27): 4 examples with Tavily, 200 real postings, a metrics timeline compacted to every third second |
 | `render.yaml` | Render blueprint for both services |
 | `FEEDBACK.md` | Running feedback on Token Factory and NVIDIA tools, for the form |
 
@@ -137,18 +137,34 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 | Status switching | `/api/analyze` returns all four verdicts; the web app switches locally | No second request, and no rules logic duplicated in the browser |
 | Token counts | Models report `tokens_in` / `tokens_out` to the shared metrics (FakeModel estimates 4 characters per token) | Feeds tokens per second on the dashboard |
 | Sample mode | Recorded JSON shipped with the static site; shown whenever the engine is not live | The hosted API sleeps and has no key until Phase 5 |
+| Token cap | `max_tokens` 8192 (was 4096) | Nano's reasoning took 3,066 tokens on a long SpaceX posting and once ran out before writing JSON |
+| JSON retries | An empty or JSON-less reply is asked again unchanged, a malformed one is shown its error; up to two retries | Failures were random, not tied to a posting; showing an empty reply back didn't help |
+| Nano reasoning | Left on | With reasoning off, Nano was 3× faster but copied an irrelevant sentence (a home-office budget) |
+| Tavily sources | Only sources that name the company are kept | For an invented company the search returned generic sponsor lists, which would have misled |
+| Spending | Measured, not guessed: `cost_micro_usd` counter from catalog prices | Plan for the $25 alone |
 | Colors | Data-viz reference palette: status colors good, warning and critical for Clear, Unclear and Blocked, always with an icon and label; one blue for series | Colorblind-safe and consistent in light and dark |
+
+## Live measurements (Oct 27, 200 real Greenhouse postings, 20 companies)
+
+| Measure | Value |
+| --- | --- |
+| Cost | $0.30 for 200 postings (303 model calls; 348K tokens in, 474K out, mostly reasoning) |
+| Model latency | p50 6.4 s, p95 79 s, max 101 s (the long tail is reasoning) |
+| Failures | 3 of 200 with "no JSON object in reply", before the retry fix |
+| Verdicts, H-1B or OPT | 10 Clear, 24 Blocked, 163 Unclear (most postings say nothing) |
+| Verdicts, EAD / green card | 172 / 191 Clear |
+| Wall time | About 12.5 minutes at 8 concurrent model calls |
 
 ## Open items and owner actions
 
-- [ ] Tavily key: add to `.env`, run `check_setup`
-- [ ] Builder Program credit: note the amount in `FEEDBACK.md`
+- [x] Tavily key in `.env` (free plan)
+- [x] Builder Program credit: not arrived; planning without it
 - [ ] Film the gate clips for the video: eval, rehearse, kill_test, and the web app waking from sleep
 - [ ] Phase 5: ask on the Nebius Discord whether a usage cap and a sleeping demo are acceptable
 - [ ] `docs/build-plan.md` still opens with a line naming the doc it was exported from; reword before submission if wanted
 
 ## Next steps
 
-1. **Record the live sample** (needs the owner's go-ahead; about $1 to $2 of credits): run the API locally on the live model, then `uv run python -m scripts.record_sample`, check the files, and commit `web/public/sample/`. Push the web app only after this; without it the hosted site, which has no engine yet, has nothing to show.
-2. Phase 4 gate: one new person checks a posting and explains the verdict back.
-3. Phase 5: daily model-call budget, keys on Render, deploy, phone check, `scripts/bench.py` (1 vs 8 workers, cold vs warm cache, 1 vs 4 shards) into `docs/bench.md`.
+1. Phase 4 gate: the owner's husband checks the deployed site from his phone and explains a verdict back (message and pass criteria were given to the owner).
+2. Phase 5, budget first: Render's free disk is wiped on sleep, so a spend counter there resets on every wake. Plan: on the hosted API only single-posting checks run live, under a dollar cap per process plus a per-day cap; batches on the hosted site show the recorded run. Then keys on Render, deploy, phone check over cellular.
+3. Benchmark (`scripts/bench.py`): 1 vs 8 workers, cold vs warm cache, 1 vs 4 shards on FakeModel with latency drawn from the live measurements above, plus the live run as the real-world row. Results in `docs/bench.md`.
