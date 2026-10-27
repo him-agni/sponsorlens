@@ -158,6 +158,7 @@ class BatchRunner:
                     "error": job.error if job else None,
                     "company_name": analysis.company if analysis else None,
                     "verdict": verdict.model_dump(mode="json") if verdict else None,
+                    "labels": {s.value: decide(analysis, s).label.value for s in Status} if analysis else None,
                 }
             )
         return {
