@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from app.analyzer import Analyzer
 from app.schemas import SignalType
 
@@ -57,11 +59,25 @@ async def test_reasoning_and_code_fence_are_stripped() -> None:
     assert analysis.company is None
 
 
-async def test_invalid_json_is_retried_once() -> None:
-    model = ScriptedModel("not json", {"company": "Acme", "sentences": []})
+async def test_malformed_json_is_retried_with_its_error() -> None:
+    model = ScriptedModel('{"company": "Acme", "sentences": [', {"company": "Acme", "sentences": []})
     analysis = await analyzer(model).analyze("Some posting.")
     assert analysis.company == "Acme"
     assert "not valid" in model.calls[1][1][-1]["content"]
+
+
+async def test_an_empty_reply_is_asked_again_as_it_was() -> None:
+    """An empty reply means the reasoning used up the token budget; showing it back would not help."""
+    model = ScriptedModel("", "", {"company": "Acme", "sentences": []})
+    analysis = await analyzer(model).analyze("Some posting.")
+    assert analysis.company == "Acme"
+    assert model.calls[1][1] == model.calls[0][1] == model.calls[2][1]
+
+
+async def test_three_unusable_replies_fail_the_job() -> None:
+    model = ScriptedModel("", "", "")
+    with pytest.raises(ValueError, match="no JSON"):
+        await analyzer(model).analyze("Some posting.")
 
 
 async def test_invented_quote_is_retried_then_counted() -> None:

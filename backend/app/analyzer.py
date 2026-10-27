@@ -117,15 +117,23 @@ class Analyzer:
         return signals, len(missing)
 
     async def _ask[T: BaseModel](self, model: str, messages: list[dict], schema: type[T]) -> T:
+        """Retry an unusable reply up to twice. A reply with no JSON at all usually means the reasoning
+        used up the token budget, so it is asked again as it was; a malformed one is shown its error."""
         reply = await self.model.complete(model, messages)
-        try:
-            return schema.model_validate(_parse_json(reply))
-        except (ValueError, ValidationError) as error:
-            retry = messages + [
-                {"role": "assistant", "content": reply},
-                {"role": "user", "content": f"That reply was not valid ({error}). Reply with the JSON only."},
-            ]
-            return schema.model_validate(_parse_json(await self.model.complete(model, retry)))
+        for retries_left in (2, 1, 0):
+            try:
+                return schema.model_validate(_parse_json(reply))
+            except (ValueError, ValidationError) as error:
+                if not retries_left:
+                    raise
+                retry = messages
+                if "{" in reply:
+                    retry = messages + [
+                        {"role": "assistant", "content": reply},
+                        {"role": "user", "content": f"That reply was not valid ({error}). Reply with the JSON only."},
+                    ]
+                reply = await self.model.complete(model, retry)
+        raise AssertionError("unreachable")
 
 
 def _relevant(classified: _Classified) -> list[_RawSignal]:
