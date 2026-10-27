@@ -3,18 +3,26 @@ import asyncio
 from app.engine.engine import Engine
 from app.engine.fake_model import FakeModel
 from app.engine.jobs import JobState
-from app.fixtures import load_fixtures
+from app.engine.log import MemoryLogStore
+from app.fixtures import load_fixtures, numbered_postings
 
-POSTINGS = [f.posting for f in load_fixtures()]
+POSTINGS = numbered_postings(200)
 
 
 def engine(model: FakeModel, **kwargs) -> Engine:
-    kwargs = {"workers": 8, "queue_capacity": 16, "model_concurrency": 4, "retry_base_delay": 0.001} | kwargs
+    kwargs = {
+        "shards": 4,
+        "workers": 8,
+        "queue_capacity": 16,
+        "model_concurrency": 4,
+        "retry_base_delay": 0.001,
+        "log_interval": 0.001,
+    } | kwargs
     return Engine(model, nano_model="fake-nano", ultra_model="fake-ultra", **kwargs)
 
 
 async def submit_all(e: Engine, count: int) -> list:
-    return [await e.submit(POSTINGS[i % len(POSTINGS)], source=f"fake:{i}") for i in range(count)]
+    return [await e.submit(POSTINGS[i], source=f"fake:{i}") for i in range(count)]
 
 
 async def test_200_jobs_finish_without_deadlock() -> None:
@@ -27,8 +35,17 @@ async def test_200_jobs_finish_without_deadlock() -> None:
     assert all(job.state == JobState.DONE for job in jobs)
     counters = e.metrics.counters
     assert counters["jobs_submitted"] == counters["jobs_done"] == 200
-    assert e.queue.peak == 16, "a producer faster than the workers fills the queue"
-    assert len(e.queue) == 0
+    assert any(s.queue.peak == s.queue.capacity == 4 for s in e.shards), "a fast producer fills a shard queue"
+    assert all(len(s.queue) == 0 for s in e.shards)
+
+
+async def test_jobs_with_the_same_key_share_a_shard() -> None:
+    e = engine(FakeModel(latency=0.001, seed=8))
+    await e.start()
+    jobs = [await e.submit(POSTINGS[i], key="stripe") for i in range(10)]
+    await asyncio.gather(*(job.wait() for job in jobs))
+    await e.shutdown()
+    assert len({job.shard for job in jobs}) == 1
 
 
 async def test_in_flight_model_calls_never_exceed_the_cap() -> None:
@@ -58,7 +75,7 @@ async def test_injected_429s_and_503s_recover_through_retries() -> None:
 
 
 async def test_drain_finishes_in_flight_jobs() -> None:
-    e = engine(FakeModel(latency=0.05, jitter=0, seed=4), workers=4, model_concurrency=4)
+    e = engine(FakeModel(latency=0.05, jitter=0, seed=4), shards=1, workers=4, model_concurrency=4)
     await e.start()
     jobs = await submit_all(e, 12)
     await asyncio.sleep(0.02)
@@ -90,10 +107,70 @@ async def test_job_lifecycle_stamps_are_in_order() -> None:
 
 
 async def test_a_failing_job_does_not_stop_its_worker() -> None:
-    e = engine(FakeModel(latency=0, failure_rate=1.0, seed=7), workers=1)
+    e = engine(FakeModel(latency=0, failure_rate=1.0, seed=7), shards=1, workers=1)
     await e.start()
     jobs = await submit_all(e, 3)
     await asyncio.gather(*(job.wait() for job in jobs))
     await e.shutdown()
     assert [job.state for job in jobs] == [JobState.FAILED] * 3
     assert "FakeAPIError" in jobs[0].error
+
+
+async def test_a_repeated_posting_is_analyzed_once() -> None:
+    e = engine(FakeModel(latency=0.002, seed=9))
+    await e.start()
+    posting = load_fixtures()[0].posting
+    jobs = [await e.submit(posting, source=f"city:{i}") for i in range(10)]
+    await asyncio.gather(*(job.wait() for job in jobs))
+    await e.shutdown()
+    assert e.metrics.counters["analyses"] == 1
+    assert all(job.result == jobs[0].result for job in jobs)
+
+
+async def test_every_done_job_has_a_record_in_the_log() -> None:
+    store = MemoryLogStore()
+    e = engine(FakeModel(latency=0.001, seed=10), log_store=store)
+    await e.start()
+    jobs = await submit_all(e, 20)
+    await asyncio.gather(*(job.wait() for job in jobs))
+    await e.shutdown()
+    logged = {r["job_id"] for r in store.records if r["type"] == "done"}
+    assert logged == {job.id for job in jobs}
+    assert all("text" not in r for r in store.records), "posting text is never stored"
+
+
+async def test_a_restarted_engine_skips_finished_jobs() -> None:
+    store = MemoryLogStore()
+    first = engine(FakeModel(latency=0.001, seed=11), log_store=store)
+    await first.start()
+    done = [await first.submit(POSTINGS[i], job_id=f"job-{i}") for i in range(10)]
+    await asyncio.gather(*(job.wait() for job in done))
+    await first.shutdown()
+
+    second = engine(FakeModel(latency=0.001, seed=12), log_store=store)
+    await second.start()
+    jobs = [await second.submit(POSTINGS[i], job_id=f"job-{i}") for i in range(15)]
+    await asyncio.gather(*(job.wait() for job in jobs))
+    await second.shutdown()
+
+    counters = second.metrics.counters
+    assert counters["jobs_recovered"] == 10
+    assert counters["analyses"] == 5, "only the five new jobs reach the model"
+    assert [job.result for job in jobs[:10]] == [job.result for job in done]
+    assert second.metrics.snapshot()["gauges"]["recovery_records"] == 10
+
+
+async def test_replaying_the_log_twice_gives_the_same_state() -> None:
+    store = MemoryLogStore()
+    e = engine(FakeModel(latency=0.001, seed=13), log_store=store)
+    await e.start()
+    jobs = await submit_all(e, 10)
+    await asyncio.gather(*(job.wait() for job in jobs))
+    await e.shutdown()
+
+    restored = engine(FakeModel(seed=14))
+    restored.restore(store.records)
+    once = (dict(restored.recovered), len(restored.cache))
+    restored.restore(store.records)
+    assert (dict(restored.recovered), len(restored.cache)) == once
+    assert len(restored.cache) == 10

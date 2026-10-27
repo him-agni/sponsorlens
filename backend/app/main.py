@@ -13,7 +13,7 @@ from app.config import settings
 from app.engine.engine import Engine
 from app.engine.fake_model import FakeModel
 from app.engine.queue import QueueClosed
-from app.fixtures import load_fixtures
+from app.fixtures import numbered_postings
 from app.llm import TokenFactoryModel, make_client
 from app.rules import decide
 from app.schemas import Analysis, Label, Status, Verdict
@@ -135,11 +135,11 @@ async def rehearsal(request: Request, body: RehearsalRequest, engine: Engine = D
     """Push invented postings through the FakeModel engine, to watch backpressure on /metrics at no cost."""
     if settings.model_backend != "fake":
         raise HTTPException(409, "Rehearsals run only with MODEL_BACKEND=fake, so they never spend credits")
-    postings = [f.posting for f in load_fixtures()]
+    postings = numbered_postings(body.jobs)
 
     async def submit_all() -> None:
-        for i in range(body.jobs):
-            await engine.submit(postings[i % len(postings)], source=f"rehearsal:{i}")
+        for i, posting in enumerate(postings):
+            await engine.submit(posting, source=f"rehearsal:{i}")
 
     task = asyncio.create_task(submit_all())
     request.app.state.background.add(task)

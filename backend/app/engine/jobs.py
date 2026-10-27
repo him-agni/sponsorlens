@@ -23,6 +23,8 @@ class Job:
     text: str
     source: str | None = None
     id: str = field(default_factory=lambda: uuid4().hex[:12])
+    batch_id: str | None = None
+    shard: int | None = None
     state: JobState = JobState.QUEUED
     stamps: dict[JobState, float] = field(default_factory=dict)
     result: Any = None
@@ -51,6 +53,8 @@ class Job:
         return {
             "id": self.id,
             "source": self.source,
+            "batch_id": self.batch_id,
+            "shard": self.shard,
             "state": self.state,
             "stamps": {state.value: stamp for state, stamp in self.stamps.items()},
             "error": self.error,

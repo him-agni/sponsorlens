@@ -13,7 +13,9 @@ from test_analyzer import ScriptedModel
 
 
 def engine_with(model) -> Engine:
-    return Engine(model, nano_model="nano", ultra_model="ultra", workers=2, queue_capacity=4, model_concurrency=2)
+    return Engine(
+        model, nano_model="nano", ultra_model="ultra", shards=1, workers=2, queue_capacity=4, model_concurrency=2
+    )
 
 
 @pytest.fixture
@@ -93,5 +95,5 @@ def test_rehearsal_shows_on_metrics(client_for, monkeypatch) -> None:
         time.sleep(0.05)
     assert snapshot["counters"]["jobs_done"] == 40
     assert snapshot["gauges"]["queue_depth"] == 0
-    assert snapshot["gauges"]["queue_depth_peak"] == 4
+    assert snapshot["gauges"]["shard0_queue_peak"] == 4
     assert snapshot["histograms"]["model_latency_ms"]["count"] > 0

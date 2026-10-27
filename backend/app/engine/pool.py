@@ -19,11 +19,9 @@ class WorkerPool:
         self.busy = 0
         self.metrics = metrics
         self._tasks: list[asyncio.Task] = []
-        metrics.gauge("workers_busy", lambda: self.busy)
-        metrics.gauge("workers_total", lambda: self.size)
 
-    def start(self) -> None:
-        self._tasks = [asyncio.create_task(self._work(), name=f"worker-{i}") for i in range(self.size)]
+    def start(self, name: str = "worker") -> None:
+        self._tasks = [asyncio.create_task(self._work(), name=f"{name}-{i}") for i in range(self.size)]
 
     async def drain(self, discard_pending: bool = False) -> list[Job]:
         """Stop intake and wait for the workers to finish their jobs and exit.
