@@ -3,17 +3,21 @@ import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from app import company_context
+from app import company_context, greenhouse
+from app.batches import BatchRunner
 from app.company_context import CompanyContext
 from app.config import settings
 from app.engine.engine import Engine
 from app.engine.fake_model import FakeModel
+from app.engine.log import JsonlLogStore
 from app.engine.queue import QueueClosed
 from app.fixtures import numbered_postings
+from app.greenhouse import PRESET_COMPANIES
 from app.llm import TokenFactoryModel, make_client
 from app.rules import decide
 from app.schemas import Analysis, Label, Status, Verdict
@@ -31,21 +35,30 @@ def build_engine() -> Engine | None:
         model,
         nano_model=nano,
         ultra_model=ultra,
+        shards=settings.shards,
         workers=settings.workers,
         queue_capacity=settings.queue_capacity,
         model_concurrency=settings.model_concurrency,
+        log_store=JsonlLogStore(settings.log_path),
     )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.engine = build_engine()
+    engine = app.state.engine = build_engine()
     app.state.background = set()
-    if app.state.engine:
-        await app.state.engine.start()
+    app.state.batches = None
+    http = httpx.AsyncClient(timeout=30, headers={"User-Agent": "SponsorLens/0.1 (hackathon demo)"})
+    if engine:
+        await engine.start()  # replays the log
+        app.state.batches = BatchRunner(engine, lambda token: greenhouse.fetch_board(http, token))
+        app.state.batches.resume(engine.replayed)
     yield
-    if app.state.engine:
-        await app.state.engine.shutdown(discard_pending=True)
+    if app.state.batches:
+        await app.state.batches.stop()
+    if engine:
+        await engine.shutdown(discard_pending=True)
+    await http.aclose()
 
 
 app = FastAPI(title="SponsorLens", lifespan=lifespan)
@@ -145,3 +158,48 @@ async def rehearsal(request: Request, body: RehearsalRequest, engine: Engine = D
     request.app.state.background.add(task)
     task.add_done_callback(request.app.state.background.discard)
     return {"jobs": body.jobs}
+
+
+def get_batches(request: Request, engine: Engine = Depends(get_engine)) -> BatchRunner:
+    return request.app.state.batches
+
+
+@app.get("/api/presets")
+async def presets() -> dict:
+    return {"companies": PRESET_COMPANIES}
+
+
+class BatchRequest(BaseModel):
+    companies: list[str] = Field(default_factory=lambda: list(PRESET_COMPANIES), min_length=1)
+    per_company: int = Field(default=10, ge=1, le=25)
+    status: Status = Status.H1B
+
+    @field_validator("companies")
+    @classmethod
+    def only_presets(cls, companies: list[str]) -> list[str]:
+        """Batches read only the preset boards, so repeat runs are mostly cache hits."""
+        unknown = sorted(set(companies) - set(PRESET_COMPANIES))
+        if unknown:
+            raise ValueError(f"not in the preset list: {', '.join(unknown)}")
+        return list(dict.fromkeys(companies))
+
+
+@app.post("/api/batch", status_code=202)
+async def create_batch(body: BatchRequest, batches: BatchRunner = Depends(get_batches)) -> dict:
+    batch = await batches.create(body.companies, body.per_company, body.status)
+    return {"id": batch.id}
+
+
+@app.get("/api/batch/{batch_id}")
+async def get_batch(batch_id: str, status: Status | None = None, batches: BatchRunner = Depends(get_batches)) -> dict:
+    batch = batches.batches.get(batch_id)
+    if batch is None:
+        raise HTTPException(404, "No batch with that ID; the free host forgets batches when it sleeps")
+    return batches.view(batch, status)
+
+
+@app.get("/api/batches")
+async def list_batches(batches: BatchRunner = Depends(get_batches)) -> list[dict]:
+    """Most recent first, without the per-posting rows."""
+    ordered = sorted(batches.batches.values(), key=lambda b: b.created, reverse=True)
+    return [{k: v for k, v in batches.view(b).items() if k != "items"} for b in ordered]

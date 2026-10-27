@@ -20,12 +20,16 @@ class Settings(BaseSettings):
 
     # "fake" runs the engine on FakeModel: no key, no cost, and /api/rehearsal is enabled.
     model_backend: Literal["live", "fake"] = "live"
+    shards: int = 4
+    # Totals across all shards.
     workers: int = 8
     queue_capacity: int = 32
     # Measured limits on Oct 24: Nano 100 RPM, Ultra 300 RPM and 200K TPM. Eight calls at a few
     # seconds each stays well under both.
     model_concurrency: int = 8
     fake_latency: float = 0.4
+    # The append-only log, replayed on startup. On Render's free tier it is wiped when the service sleeps.
+    log_path: Path = REPO_ROOT / "backend" / "data" / "sponsorlens.jsonl"
 
     cors_origins: list[str] = ["http://localhost:5173"]
 

@@ -66,6 +66,36 @@ def test_failed_model_call_is_a_502(client_for) -> None:
     assert "FakeAPIError" in response.json()["detail"]
 
 
+def test_a_batch_runs_and_reports_verdicts_for_any_status(client_for, monkeypatch) -> None:
+    from test_batches import postings_for
+
+    async def fake_board(client, token: str):
+        return postings_for(token)
+
+    monkeypatch.setattr(main.greenhouse, "fetch_board", fake_board)
+    client = client_for(FakeModel(latency=0.001, seed=2))
+    created = client.post("/api/batch", json={"companies": ["stripe", "figma"], "per_company": 3, "status": "opt"})
+    assert created.status_code == 202
+    url = f"/api/batch/{created.json()['id']}"
+
+    deadline = time.monotonic() + 10
+    while not (view := client.get(url).json())["finished"] and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert view["progress"] == {"total": 6, "done": 6}
+    assert view["status"] == "opt"
+    assert client.get(url, params={"status": "green_card"}).json()["status"] == "green_card"
+    assert [b["id"] for b in client.get("/api/batches").json()] == [view["id"]]
+
+
+def test_a_batch_takes_only_preset_companies(client_for) -> None:
+    client = client_for(FakeModel())
+    response = client.post("/api/batch", json={"companies": ["stripe", "evil-corp"]})
+    assert response.status_code == 422
+    assert "evil-corp" in response.text
+    assert client.get("/api/batch/nope").status_code == 404
+    assert "stripe" in client.get("/api/presets").json()["companies"]
+
+
 def test_without_a_key_the_engine_is_off_but_health_works(monkeypatch) -> None:
     monkeypatch.setattr(settings, "nebius_api_key", "")
     monkeypatch.setattr(settings, "model_backend", "live")
