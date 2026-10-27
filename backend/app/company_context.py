@@ -22,10 +22,19 @@ class CompanyContext(BaseModel):
     sources: list[Source]
 
 
+_found: dict[str, CompanyContext] = {}
+
+
 async def lookup(company: str, max_results: int = 3) -> CompanyContext | None:
-    """Search the company's H-1B sponsorship history. Returns None without a key or on failure."""
+    """Search the company's H-1B sponsorship history. Returns None without a key or on failure.
+
+    Results are kept for the life of the process, so a company is searched once however many of its
+    postings come back Unclear.
+    """
     if not settings.tavily_api_key or not company:
         return None
+    if company in _found:
+        return _found[company]
     query = f"{company} H-1B visa sponsorship history"
     try:
         reply = await AsyncTavilyClient(api_key=settings.tavily_api_key).search(
@@ -35,4 +44,5 @@ async def lookup(company: str, max_results: int = 3) -> CompanyContext | None:
         log.warning("Tavily search failed for %s", company, exc_info=True)
         return None
     sources = [Source(title=r["title"], url=r["url"], snippet=r["content"]) for r in reply.get("results", [])]
-    return CompanyContext(company=company, query=query, sources=sources)
+    _found[company] = CompanyContext(company=company, query=query, sources=sources)
+    return _found[company]

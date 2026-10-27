@@ -54,6 +54,24 @@ def test_analyze_looks_up_company_only_when_unclear(client_for) -> None:
     assert looked_up == ["Acme"]
 
 
+def test_analyze_returns_every_status_and_the_text_it_checked(client_for) -> None:
+    client = client_for(FakeModel(latency=0, seed=1))
+    body = client.post("/api/analyze", json={"text": "<p>Acme is hiring.</p><p>We will not sponsor visas.</p>", "status": "ead"}).json()
+    assert set(body["verdicts"]) == {"ead", "opt", "h1b", "green_card"}
+    assert body["verdicts"]["ead"] == body["verdict"]
+    assert body["verdicts"]["opt"]["label"] == "blocked"
+    assert body["text"] == "Acme is hiring.\nWe will not sponsor visas."
+
+
+def test_company_context_endpoint_uses_the_lookup(client_for) -> None:
+    async def fake_lookup(company: str) -> CompanyContext:
+        return CompanyContext(company=company, query="q", sources=[])
+
+    app.dependency_overrides[get_context_lookup] = lambda: fake_lookup
+    client = client_for(ScriptedModel())
+    assert client.get("/api/company-context", params={"company": "Acme"}).json()["company"] == "Acme"
+
+
 def test_analyze_rejects_unknown_status(client_for) -> None:
     client = client_for(ScriptedModel())
     assert client.post("/api/analyze", json={"text": "x", "status": "tourist"}).status_code == 422

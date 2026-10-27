@@ -3,6 +3,7 @@ from typing import Protocol
 from openai import AsyncOpenAI
 
 from app.config import settings
+from app.engine.metrics import Metrics
 
 
 def make_client(max_retries: int = 2) -> AsyncOpenAI:
@@ -17,10 +18,11 @@ class ChatModel(Protocol):
 
 
 class TokenFactoryModel:
-    def __init__(self, client: AsyncOpenAI | None = None, max_tokens: int = 4096) -> None:
+    def __init__(self, client: AsyncOpenAI | None = None, max_tokens: int = 4096, metrics: Metrics | None = None) -> None:
         # The engine's GuardedModel owns retries, so the SDK's own are off and every retry is counted.
         self.client = client or make_client(max_retries=0)
         self.max_tokens = max_tokens
+        self.metrics = metrics
 
     async def complete(self, model: str, messages: list[dict]) -> str:
         # Nemotron is not tagged for JSON mode in the catalog, but both models honored it in Phase 0.
@@ -31,4 +33,8 @@ class TokenFactoryModel:
             max_tokens=self.max_tokens,
             response_format={"type": "json_object"},
         )
+        if self.metrics and reply.usage:
+            # Completion tokens include the reasoning tokens, which are billed as output.
+            self.metrics.inc("tokens_in", reply.usage.prompt_tokens)
+            self.metrics.inc("tokens_out", reply.usage.completion_tokens)
         return reply.choices[0].message.content or ""

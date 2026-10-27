@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app import company_context
@@ -19,6 +20,20 @@ class FakeTavily:
 class BrokenTavily(FakeTavily):
     async def search(self, query: str, **kwargs) -> dict:
         raise RuntimeError("network down")
+
+
+@pytest.fixture(autouse=True)
+def forget_lookups(monkeypatch) -> None:
+    monkeypatch.setattr(company_context, "_found", {})
+
+
+async def test_a_company_is_searched_once(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "tavily_api_key", "tvly-test")
+    monkeypatch.setattr(company_context, "AsyncTavilyClient", FakeTavily)
+    FakeTavily.queries = []
+    await company_context.lookup("Acme")
+    await company_context.lookup("Acme")
+    assert len(FakeTavily.queries) == 1
 
 
 async def test_lookup_without_a_key_does_nothing(monkeypatch) -> None:

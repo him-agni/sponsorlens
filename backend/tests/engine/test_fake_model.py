@@ -2,6 +2,7 @@ import pytest
 
 from app.analyzer import Analyzer
 from app.engine.fake_model import FakeAPIError, FakeModel
+from app.engine.metrics import Metrics
 from app.fixtures import load_fixtures
 from app.rules import decide
 
@@ -41,3 +42,10 @@ async def test_seeded_runs_repeat() -> None:
 
     assert await outcomes(7) == await outcomes(7)
     assert "429" in await outcomes(7)
+
+
+async def test_tokens_are_counted_when_metrics_are_given() -> None:
+    metrics = Metrics()
+    analyzer = Analyzer(FakeModel(latency=0, metrics=metrics), "fake-nano", "fake-ultra")
+    await analyzer.analyze(load_fixtures()[0].posting)
+    assert metrics.counters["tokens_in"] > 0 and metrics.counters["tokens_out"] > 0

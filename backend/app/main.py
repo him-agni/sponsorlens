@@ -1,11 +1,13 @@
 import asyncio
+import json
 import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from app import company_context, greenhouse
@@ -15,26 +17,30 @@ from app.config import settings
 from app.engine.engine import Engine
 from app.engine.fake_model import FakeModel
 from app.engine.log import JsonlLogStore
+from app.engine.metrics import Metrics
 from app.engine.queue import QueueClosed
 from app.fixtures import numbered_postings
 from app.greenhouse import PRESET_COMPANIES
 from app.llm import TokenFactoryModel, make_client
+from app.normalize import normalize
 from app.rules import decide
 from app.schemas import Analysis, Label, Status, Verdict
 
 
 def build_engine() -> Engine | None:
     """The live engine needs a key; without one the API still serves /health and explains what to set."""
+    metrics = Metrics()
     if settings.model_backend == "fake":
-        model, nano, ultra = FakeModel(latency=settings.fake_latency), "fake-nano", "fake-ultra"
+        model, nano, ultra = FakeModel(latency=settings.fake_latency, metrics=metrics), "fake-nano", "fake-ultra"
     elif settings.nebius_api_key:
-        model, nano, ultra = TokenFactoryModel(), settings.nano_model, settings.ultra_model
+        model, nano, ultra = TokenFactoryModel(metrics=metrics), settings.nano_model, settings.ultra_model
     else:
         return None
     return Engine(
         model,
         nano_model=nano,
         ultra_model=ultra,
+        metrics=metrics,
         shards=settings.shards,
         workers=settings.workers,
         queue_capacity=settings.queue_capacity,
@@ -117,6 +123,10 @@ class AnalyzeRequest(BaseModel):
 class AnalyzeResponse(BaseModel):
     analysis: Analysis
     verdict: Verdict
+    # Every status at once, so the web app switches status without another request.
+    verdicts: dict[Status, Verdict]
+    # The normalized posting the quotes were checked against, for highlighting them.
+    text: str
     company_context: CompanyContext | None = None
 
 
@@ -132,11 +142,36 @@ async def analyze(
         raise HTTPException(503, "The engine is shutting down")
     except RuntimeError as error:
         raise HTTPException(502, f"The model call failed: {error}")
-    verdict = decide(analysis, request.status)
+    verdicts = {status: decide(analysis, status) for status in Status}
+    verdict = verdicts[request.status]
     context = None
     if verdict.label == Label.UNCLEAR and analysis.company:
         context = await lookup(analysis.company)
-    return AnalyzeResponse(analysis=analysis, verdict=verdict, company_context=context)
+    return AnalyzeResponse(
+        analysis=analysis, verdict=verdict, verdicts=verdicts, text=normalize(request.text), company_context=context
+    )
+
+
+@app.get("/api/company-context")
+async def get_company_context(
+    company: str = Query(min_length=1, max_length=200),
+    lookup: Callable[[str], Awaitable[CompanyContext | None]] = Depends(get_context_lookup),
+) -> CompanyContext | None:
+    """For a status switched to Unclear in the web app. Web context only; it never changes a verdict."""
+    return await lookup(company)
+
+
+@app.get("/api/stream")
+async def stream(request: Request, engine: Engine = Depends(get_engine)) -> StreamingResponse:
+    """Server-sent events: a metrics snapshot twice a second, for the live dashboard."""
+
+    async def events():
+        while not await request.is_disconnected():
+            snapshot = {"backend": settings.model_backend, **engine.metrics.snapshot()}
+            yield f"data: {json.dumps(snapshot)}\n\n"
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
 
 
 class RehearsalRequest(BaseModel):
