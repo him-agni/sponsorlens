@@ -4,7 +4,7 @@ Running notes for the hackathon feedback form. Add to it as things come up.
 
 ## Setup (Phase 0)
 
-- Credits claimed: $25 from the Devpost promo code arrived Oct 24; the Builder Program credit is still pending (told up to 2 business days)
+- Credits claimed: $25 from the Devpost promo code arrived Oct 24; the $25 Builder Program credit arrived Oct 28 (we were told up to 2 business days)
 - Token Factory base URL: `https://api.tokenfactory.nebius.com/v1/`
 - Nemotron model IDs, from the public catalog (`/api/public/models_info`), Oct 23:
 
@@ -42,7 +42,7 @@ Running notes for the hackathon feedback form. Add to it as things come up.
 - 3 of 200 calls came back with no JSON at all. One long posting used 3,066 reasoning tokens on Nano, so with `max_tokens` 4096 the reasoning sometimes used up the budget before the answer started. Raising the cap and retrying fixed it. A per-request reasoning budget, separate from `max_tokens`, would make this predictable.
 - Turning reasoning off (`chat_template_kwargs: {enable_thinking: false}`) made Nano 3× faster but it copied an irrelevant sentence, so reasoning stays on. It was not obvious from the docs which reasoning controls Token Factory honors for Nemotron.
 - No 429s at 8 concurrent calls, and no 5xx during this run.
-- The Builder Program credit never arrived before the deadline week, so the whole build ran on the $25 promo credit, which was plenty.
+- The Builder Program credit arrived Oct 28, two days before the deadline. Everything through Phase 4 ran on the $25 promo credit, which was plenty.
 
 ## What worked well
 

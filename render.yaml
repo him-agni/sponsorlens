@@ -14,6 +14,14 @@ services:
         sync: false
       - key: TAVILY_API_KEY
         sync: false
+      # Spending limits for the public demo: single checks run live under a daily dollar cap and an
+      # hourly request limit; batches show the recorded run. The cap resets when the service restarts.
+      - key: LIVE_BATCHES
+        value: "false"
+      - key: DAILY_BUDGET_USD
+        value: "0.5"
+      - key: HOURLY_REQUESTS
+        value: "30"
       # Must match the static site's URL below; a JSON list.
       - key: CORS_ORIGINS
         value: '["https://sponsorlens-web.onrender.com"]'
