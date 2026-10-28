@@ -58,7 +58,7 @@ From `backend/`:
 | `uv sync` | Install dependencies | — |
 | `uv run uvicorn app.main:app --reload` | API on :8000 (live model if `.env` has a key) | Credits per analysis |
 | `MODEL_BACKEND=fake uv run uvicorn app.main:app` | API on the fake model | Free |
-| `uv run pytest` | 165 tests, fake model only | Free |
+| `uv run pytest` | 174 tests, fake model only | Free |
 | `uv run python -m scripts.check_setup` | Pings both models, reads rate limits, tests JSON mode and Tavily | A few cents |
 | `uv run python -m scripts.eval` | Phase 1 gate: 15 fixtures on the real models | About $0.10 |
 | `uv run python -m scripts.rehearse` | Phase 2 gate: 200 fake jobs, live queue view | Free |
@@ -79,6 +79,7 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `backend/app/analyzer.py` | Nemotron cascade: Nano finds sentences, Ultra classifies; quotes verified; a reply with no JSON is retried with reasoning off; repeated quotes merged. `PROMPT_VERSION = "p1"` |
 | `backend/app/rules.py` | The verdict rules table as code (`decide(analysis, status)`) |
 | `backend/app/llm.py` | `TokenFactoryModel` (AsyncOpenAI, JSON mode, temperature 0); checks the budget before every call and records token cost |
+| `backend/app/glance.py` | At a glance: location, work mode, experience, education, salary, job type from one Nano call with reasoning off; each fact kept only if its quote is in the posting and backs the answer; cached per posting |
 | `backend/app/budget.py` | `Budget` (dollars per UTC day, read from `cost_micro_usd`) and `HourlyLimit` (sliding hour, all callers) |
 | `backend/app/company_context.py` | Tavily lookup for Unclear verdicts |
 | `backend/app/greenhouse.py` | Greenhouse fetch, US filter, `PRESET_COMPANIES` (20 boards); `fetch_job` and `JOB_URL` for a single pasted link |
@@ -95,7 +96,9 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `backend/app/engine/metrics.py` | Counters, gauges, windowed p50/p95 histograms |
 | `backend/app/engine/fake_model.py` | Keyword `FakeModel` with set latency, 429 and 503 rates |
 | `backend/scripts/record_sample.py` | Records the sample run the web app shows when the engine is asleep or off |
-| `web/src/App.tsx` | Shell: header, status picker and tabs (all kept in the URL: `?view=&status=&batch=&verdict=`), banner, footer |
+| `web/src/App.tsx` | Shell: sticky header (section links, Under the hood, theme switch), the home page or the Under the hood views (`?view=engine` or `?view=batch`), footer |
+| `web/src/Home.tsx` | Landing page: hero (headline with the sweeping highlight, floating rule chips, three sample verdicts), sites marquee, Check a job, Scan a board, How it works, FAQ. Sections fade up on scroll (`useReveal`) |
+| `web/src/BoardScan.tsx` | Scan a Greenhouse board: link plus optional title keyword, polls the batch, results as job cards tinted by verdict with filters and Details; recorded examples (Scale AI, Anthropic, SpaceX, Robinhood) when not live |
 | `web/src/engine.ts` | `useEngine`: probes `/health` then `/metrics`; `live`, `waking` (slow health), `no-engine` (503, no key) or `offline`, plus `liveBatches` from `/health` |
 | `web/src/CheckView.tsx` | Paste box (text or a link, read into the box first), Start over button, examples, verdict card, per-status switch, Tavily panel, posting text with quotes marked |
 | `web/src/BatchView.tsx` | Start a batch from the presets, poll it, filter by verdict, 50 rows at a time |
@@ -118,6 +121,7 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `POST /api/read-link` `{url}` | A posting's normalized text from its link, for the paste box; 422 with a reason when the page isn't a readable posting. Counts toward the hourly limit |
 | `GET /api/company-context?company=` | Tavily context on demand, when the web app switches to a status that is Unclear. Results are kept per company. Counts toward the hourly limit |
 | `GET /api/stream` | Server-sent events: a metrics snapshot twice a second |
+| `POST /api/scan` `{url, status, keyword?}` | Scan one Greenhouse board's US jobs (titles containing the keyword, if given), at most `SCAN_LIMIT` (10). Allowed even with `LIVE_BATCHES=false`; the hourly limit is charged one request per job, and it refuses up front if the day's budget is spent. Returns `{id, company, found, scanning}`; poll `/api/batch/{id}` |
 | `POST /api/batch` `{companies, per_company, status}` | Start a batch of preset Greenhouse boards (preset companies only; 1 to 25 each). 403 when `LIVE_BATCHES=false` |
 | `GET /api/batch/{id}?status=` | Progress plus a verdict per posting for any status |
 | `GET /api/batches` | Batch summaries, newest first |
@@ -156,6 +160,9 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 | Link reading depth | Tavily Extract `advanced` | On Wellfound, `basic` dropped the "Visa Sponsorship: Not Available" label and every bullet list. Costs twice the Tavily credits |
 | No-JSON fallback | A reply with no JSON is asked again with reasoning off (`chat_template_kwargs.enable_thinking=false`), not repeated | Oct 28 on the hosted demo: a noisy page made Nano use all 8,192 tokens reasoning three times (about 90 s) and fail. Without reasoning Nano answered in 1.4 s with the right sentence. Reasoning stays on for the first try because it reads more carefully |
 | Error messages | People see what to do ("paste just the job description", "try again in a minute"); the raw error goes to the server log | The raw "ValueError: no JSON object in reply" meant nothing to a tester |
+| Second tester round (Oct 28) | Landing page redesigned after a Dribbble reference the owner chose (violet brand, Manrope, highlighted headline words, pill section labels, lavender sections, fade-up and float animations, reduced-motion respected); light/dark/auto theme switch; Engine and the 200-job run moved under "Under the hood"; FAQ and a three-step tutorial; At a glance card; board scan on the main page | The tester found the app text-heavy, didn't understand what it did, and asked for a theme switch, batch scanning and a wider scope |
+| Board scans on the hosted demo | Allowed, unlike batches, but capped at 10 jobs per scan inside the daily budget | A live Databricks scan of 10 jobs took about a minute and cost about $0.04, so $0.50 a day allows about 12 scans |
+| Board scan sources | Greenhouse only; Lever is a possible addition (public JSON feed); LinkedIn and Wellfound have no public feed and gate listings behind sign-in, so only single links from them | |
 | Start over | The reset button is called Start over, not Clear | "Clear" is also a verdict; a test caught the clash |
 | Scope | Work authorization only; broader checks (remote or location limits, degree requirements) go in the README as the roadmap | Suggested by the Phase 4 tester; too big for the days left, and a narrow tool that quotes its evidence is easier to trust |
 | Colors | Data-viz reference palette: status colors good, warning and critical for Clear, Unclear and Blocked, always with an icon and label; one blue for series | Colorblind-safe and consistent in light and dark |
