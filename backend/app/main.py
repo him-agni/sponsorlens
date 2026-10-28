@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app import company_context, greenhouse
 from app.batches import BatchRunner
+from app.budget import Budget, BudgetExceeded, HourlyLimit
 from app.company_context import CompanyContext
 from app.config import settings
 from app.engine.engine import Engine
@@ -33,7 +34,8 @@ def build_engine() -> Engine | None:
     if settings.model_backend == "fake":
         model, nano, ultra = FakeModel(latency=settings.fake_latency, metrics=metrics), "fake-nano", "fake-ultra"
     elif settings.nebius_api_key:
-        model, nano, ultra = TokenFactoryModel(metrics=metrics), settings.nano_model, settings.ultra_model
+        budget = Budget(metrics, settings.daily_budget_usd)
+        model, nano, ultra = TokenFactoryModel(metrics=metrics, budget=budget), settings.nano_model, settings.ultra_model
     else:
         return None
     return Engine(
@@ -54,6 +56,7 @@ async def lifespan(app: FastAPI):
     engine = app.state.engine = build_engine()
     app.state.background = set()
     app.state.batches = None
+    app.state.hourly = HourlyLimit(settings.hourly_requests)
     http = httpx.AsyncClient(timeout=30, headers={"User-Agent": "SponsorLens/0.1 (hackathon demo)"})
     if engine:
         await engine.start()  # replays the log
@@ -73,10 +76,18 @@ app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_me
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok"}
+    # The web app reads live_batches to show the recorded batch where batches would spend credits.
+    return {"status": "ok", "live_batches": settings.live_batches}
 
 
-@app.get("/api/ping-model")
+def within_hourly_limit(request: Request) -> None:
+    """For the public endpoints that can spend credits."""
+    hourly = getattr(request.app.state, "hourly", None)
+    if hourly and not hourly.take():
+        raise HTTPException(429, "The live demo is busy this hour. The examples still work; try again in a few minutes.")
+
+
+@app.get("/api/ping-model", dependencies=[Depends(within_hourly_limit)])
 async def ping_model() -> dict:
     """Phase 0 gate: one round trip to Nemotron on Token Factory."""
     if not settings.nebius_api_key or not settings.nano_model:
@@ -130,7 +141,7 @@ class AnalyzeResponse(BaseModel):
     company_context: CompanyContext | None = None
 
 
-@app.post("/api/analyze")
+@app.post("/api/analyze", dependencies=[Depends(within_hourly_limit)])
 async def analyze(
     request: AnalyzeRequest,
     engine: Engine = Depends(get_engine),
@@ -141,6 +152,11 @@ async def analyze(
     except QueueClosed:
         raise HTTPException(503, "The engine is shutting down")
     except RuntimeError as error:
+        # The engine reports a job's failure as "<exception name>: <message>".
+        if str(error).startswith(BudgetExceeded.__name__):
+            raise HTTPException(
+                429, "The live demo has spent today's budget. The examples still work, and it resets at midnight UTC."
+            )
         raise HTTPException(502, f"The model call failed: {error}")
     verdicts = {status: decide(analysis, status) for status in Status}
     verdict = verdicts[request.status]
@@ -152,7 +168,7 @@ async def analyze(
     )
 
 
-@app.get("/api/company-context")
+@app.get("/api/company-context", dependencies=[Depends(within_hourly_limit)])
 async def get_company_context(
     company: str = Query(min_length=1, max_length=200),
     lookup: Callable[[str], Awaitable[CompanyContext | None]] = Depends(get_context_lookup),
@@ -221,6 +237,8 @@ class BatchRequest(BaseModel):
 
 @app.post("/api/batch", status_code=202)
 async def create_batch(body: BatchRequest, batches: BatchRunner = Depends(get_batches)) -> dict:
+    if not settings.live_batches:
+        raise HTTPException(403, "Batches are off on the hosted demo, which shows a recorded run instead")
     batch = await batches.create(body.companies, body.per_company, body.status)
     return {"id": batch.id}
 

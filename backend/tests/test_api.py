@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import main
+from app.budget import BudgetExceeded
 from app.company_context import CompanyContext
 from app.config import settings
 from app.engine.engine import Engine
@@ -82,6 +83,43 @@ def test_failed_model_call_is_a_502(client_for) -> None:
     response = client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"})
     assert response.status_code == 502
     assert "FakeAPIError" in response.json()["detail"]
+
+
+class SpentModel:
+    async def complete(self, model: str, messages: list[dict]) -> str:
+        raise BudgetExceeded("today's $1.00 demo budget is spent")
+
+
+def test_a_spent_budget_is_a_429_that_says_so(client_for) -> None:
+    client = client_for(SpentModel())
+    response = client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"})
+    assert response.status_code == 429
+    assert "today's budget" in response.json()["detail"]
+
+
+def test_the_public_endpoints_share_an_hourly_limit(client_for, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "hourly_requests", 2)
+    app.dependency_overrides[get_context_lookup] = lambda: lambda company: _none()
+    client = client_for(FakeModel(latency=0))
+    assert client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"}).status_code == 200
+    assert client.get("/api/company-context", params={"company": "Acme"}).status_code == 200
+    refused = client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"})
+    assert refused.status_code == 429
+    assert "busy this hour" in refused.json()["detail"]
+    assert client.get("/health").status_code == 200
+
+
+async def _none() -> None:
+    return None
+
+
+def test_batches_can_be_switched_off(client_for, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "live_batches", False)
+    client = client_for(FakeModel())
+    assert client.get("/health").json() == {"status": "ok", "live_batches": False}
+    response = client.post("/api/batch", json={"companies": ["stripe"]})
+    assert response.status_code == 403
+    assert "recorded run" in response.json()["detail"]
 
 
 def test_a_batch_runs_and_reports_verdicts_for_any_status(client_for, monkeypatch) -> None:
