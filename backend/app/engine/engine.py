@@ -29,8 +29,9 @@ class Engine:
 
     Each shard has its own bounded queue and workers, modelling one node of a multi-node design in a
     single process; every model call still goes through one GuardedModel, so the global concurrency
-    cap holds across shards. Before any model call the cache is checked, and a job counts as done
-    only once its record is on disk in the log. On start the log is replayed: the cache is refilled
+    cap holds across shards. Before any model call the cache is checked. A batch job counts as done
+    only once its record is on disk in the log; a single check is never written to disk, since nothing
+    needs to resume it and its text is someone's pasted posting. On start the log is replayed: the cache is refilled
     and finished jobs are remembered, so submitting one again returns its result with no model call.
     """
 
@@ -62,7 +63,6 @@ class Engine:
         per_shard_workers = max(1, workers // shards)
         per_shard_capacity = max(1, queue_capacity // shards)
         self.shards = [Shard(i, per_shard_capacity, per_shard_workers, self._handle, self.metrics) for i in range(shards)]
-        self.jobs: dict[str, Job] = {}
         self.recovered: dict[str, Analysis] = {}
         self.replayed: list[dict] = []
         self._register_gauges()
@@ -119,17 +119,12 @@ class Engine:
         if job_id:
             job.id = job_id
         job.shard = self.shard_for(key or job.id)
-        self.jobs[job.id] = job
         if job.id in self.recovered:
             job.result = self.recovered[job.id]
             job.move(JobState.DONE)
             self.metrics.inc("jobs_recovered")
             return job
-        try:
-            await self.shards[job.shard].queue.put(job)
-        except BaseException:
-            del self.jobs[job.id]
-            raise
+        await self.shards[job.shard].queue.put(job)
         self.metrics.inc("jobs_submitted")
         return job
 
@@ -152,6 +147,8 @@ class Engine:
     async def _handle(self, job: Job) -> Analysis:
         key = cache_key(content_hash(normalize(job.text)), PROMPT_VERSION, self.nano_model, self.ultra_model)
         analysis = await self.cache.get_or_compute(key, lambda: self._analyze(job.text))
+        if job.batch_id is None:
+            return analysis
         await self.log.append(
             {
                 "type": "done",

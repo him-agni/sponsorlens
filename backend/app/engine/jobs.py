@@ -38,6 +38,8 @@ class Job:
         self.state = state
         self.stamps[state] = time.time()
         if state in FINISHED:
+            # The posting is not needed once its result is in; don't hold someone's pasted text longer.
+            self.text = ""
             self._finished.set()
 
     def ms_between(self, start: JobState, end: JobState) -> float | None:

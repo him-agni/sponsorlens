@@ -61,12 +61,14 @@ async def main() -> int:
     await engine.start()
     start = time.monotonic()
 
+    jobs = []
+
     async def produce() -> None:
         for i, posting in enumerate(postings):
-            await engine.submit(posting, source=f"rehearsal:{i}")
+            jobs.append(await engine.submit(posting, source=f"rehearsal:{i}"))
 
     producer = asyncio.create_task(produce())
-    while not producer.done() or any(job.state not in FINISHED for job in engine.jobs.values()):
+    while not producer.done() or any(job.state not in FINISHED for job in jobs):
         print(line(engine, time.monotonic() - start), flush=True)
         await asyncio.sleep(0.5)
     print(line(engine, time.monotonic() - start))

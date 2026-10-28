@@ -21,8 +21,8 @@ def engine(model: FakeModel, **kwargs) -> Engine:
     return Engine(model, nano_model="fake-nano", ultra_model="fake-ultra", **kwargs)
 
 
-async def submit_all(e: Engine, count: int) -> list:
-    return [await e.submit(POSTINGS[i], source=f"fake:{i}") for i in range(count)]
+async def submit_all(e: Engine, count: int, batch_id: str | None = None) -> list:
+    return [await e.submit(POSTINGS[i], source=f"fake:{i}", batch_id=batch_id) for i in range(count)]
 
 
 async def test_200_jobs_finish_without_deadlock() -> None:
@@ -127,11 +127,11 @@ async def test_a_repeated_posting_is_analyzed_once() -> None:
     assert all(job.result == jobs[0].result for job in jobs)
 
 
-async def test_every_done_job_has_a_record_in_the_log() -> None:
+async def test_every_done_batch_job_has_a_record_in_the_log() -> None:
     store = MemoryLogStore()
     e = engine(FakeModel(latency=0.001, seed=10), log_store=store)
     await e.start()
-    jobs = await submit_all(e, 20)
+    jobs = await submit_all(e, 20, batch_id="b1")
     await asyncio.gather(*(job.wait() for job in jobs))
     await e.shutdown()
     logged = {r["job_id"] for r in store.records if r["type"] == "done"}
@@ -139,17 +139,29 @@ async def test_every_done_job_has_a_record_in_the_log() -> None:
     assert all("text" not in r for r in store.records), "posting text is never stored"
 
 
+async def test_a_single_check_leaves_nothing_behind() -> None:
+    """Pasted postings are someone's own: nothing on disk, and the text is dropped once answered."""
+    store = MemoryLogStore()
+    e = engine(FakeModel(latency=0.001, seed=15), log_store=store)
+    await e.start()
+    job = await (await e.submit(POSTINGS[0], source="pasted")).wait()
+    await e.shutdown()
+    assert job.result is not None
+    assert [r for r in store.records if r["type"] == "done"] == []
+    assert job.text == ""
+
+
 async def test_a_restarted_engine_skips_finished_jobs() -> None:
     store = MemoryLogStore()
     first = engine(FakeModel(latency=0.001, seed=11), log_store=store)
     await first.start()
-    done = [await first.submit(POSTINGS[i], job_id=f"job-{i}") for i in range(10)]
+    done = [await first.submit(POSTINGS[i], job_id=f"job-{i}", batch_id="b1") for i in range(10)]
     await asyncio.gather(*(job.wait() for job in done))
     await first.shutdown()
 
     second = engine(FakeModel(latency=0.001, seed=12), log_store=store)
     await second.start()
-    jobs = [await second.submit(POSTINGS[i], job_id=f"job-{i}") for i in range(15)]
+    jobs = [await second.submit(POSTINGS[i], job_id=f"job-{i}", batch_id="b1") for i in range(15)]
     await asyncio.gather(*(job.wait() for job in jobs))
     await second.shutdown()
 
@@ -164,7 +176,7 @@ async def test_replaying_the_log_twice_gives_the_same_state() -> None:
     store = MemoryLogStore()
     e = engine(FakeModel(latency=0.001, seed=13), log_store=store)
     await e.start()
-    jobs = await submit_all(e, 10)
+    jobs = await submit_all(e, 10, batch_id="b1")
     await asyncio.gather(*(job.wait() for job in jobs))
     await e.shutdown()
 
