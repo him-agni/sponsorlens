@@ -3,9 +3,15 @@ import pytest
 
 from app import posting_link
 from app.config import settings
-from app.posting_link import UnreadableLink, read
+from app.posting_link import UnreadableLink, direct_link, read
 
-POSTING = "<p>Backend Engineer</p><p>" + "You will build payment systems. " * 20 + "</p><p>We cannot sponsor visas.</p>"
+POSTING = (
+    "<p>Backend Engineer</p><p>Responsibilities</p><p>" + "You will build payment systems. " * 10 + "</p>"
+    "<p>Qualifications</p><p>Five years of experience with Python.</p><p>Benefits</p><p>Health, dental, 401(k).</p>"
+    "<p>We cannot sponsor visas.</p>"
+)
+# What a Wellfound search page reads as: other companies' jobs, none of the words a posting uses.
+JOBS_LIST = "<p>Over 130k remote & local startup jobs</p>" + "<p>Acme company logo</p><p>Engineering jobs</p>" * 20
 
 
 def greenhouse(status: int = 200) -> httpx.AsyncClient:
@@ -31,6 +37,14 @@ class FakeTavily:
 
 class SignInWall(FakeTavily):
     content = "Sign in to view this job"
+
+
+class SearchPage(FakeTavily):
+    content = JOBS_LIST
+
+
+class Article(FakeTavily):
+    content = POSTING * 100
 
 
 @pytest.fixture
@@ -71,3 +85,23 @@ async def test_without_a_tavily_key_only_greenhouse_links_work(monkeypatch) -> N
     monkeypatch.setattr(settings, "tavily_api_key", "")
     with pytest.raises(UnreadableLink, match="Tavily key"):
         await read(httpx.AsyncClient(), "https://jobs.lever.co/acme/abc")
+
+
+@pytest.mark.parametrize("page", [SearchPage, Article])
+async def test_a_page_that_is_not_one_posting_gets_no_verdict(tavily, monkeypatch, page) -> None:
+    monkeypatch.setattr(posting_link, "AsyncTavilyClient", page)
+    with pytest.raises(UnreadableLink, match="doesn't look like a single job posting"):
+        await read(httpx.AsyncClient(), "https://example.com/careers")
+
+
+async def test_a_search_page_link_is_read_from_the_job_itself(tavily) -> None:
+    posting = await read(httpx.AsyncClient(), "https://wellfound.com/jobs?job_listing_slug=4892195-app-developer-177129")
+    assert FakeTavily.urls == ["https://wellfound.com/jobs/4892195-app-developer-177129"]
+    assert posting.url == "https://wellfound.com/jobs/4892195-app-developer-177129"
+
+
+def test_direct_links() -> None:
+    assert direct_link("https://www.linkedin.com/jobs/search/?currentJobId=123&keywords=x") == (
+        "https://www.linkedin.com/jobs/view/123"
+    )
+    assert direct_link("https://jobs.lever.co/acme/abc") == "https://jobs.lever.co/acme/abc"
