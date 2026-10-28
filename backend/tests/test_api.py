@@ -323,3 +323,55 @@ def test_dashboard_streams_are_capped(client_for) -> None:
     client = client_for(FakeModel())
     app.state.streams = main.MAX_STREAMS
     assert client.get("/api/stream").status_code == 503
+
+
+def test_the_engine_matches_the_settings(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(settings, "log_path", tmp_path / "log.jsonl")
+    monkeypatch.setattr(settings, "model_backend", "fake")
+    assert isinstance(main.build_engine().model.inner, FakeModel)
+
+    monkeypatch.setattr(settings, "model_backend", "live")
+    monkeypatch.setattr(settings, "nebius_api_key", "test-key")
+    monkeypatch.setattr(settings, "live_until", date(2026, 12, 15))
+    live = main.build_engine().model.inner
+    assert isinstance(live, main.TokenFactoryModel)
+    # The live model always carries the budget, with the demo's last day.
+    assert live.budget.until == date(2026, 12, 15)
+
+    monkeypatch.setattr(settings, "nebius_api_key", "")
+    assert main.build_engine() is None
+
+
+def test_the_dashboard_stream_sends_snapshots_and_frees_its_slot(client_for) -> None:
+    client = client_for(FakeModel())
+    # The test client reports a disconnect once the first event is read, so the stream ends there.
+    with client.stream("GET", "/api/stream") as response:
+        assert response.headers["content-type"].startswith("text/event-stream")
+        first = next(line for line in response.iter_lines() if line)
+        assert first.startswith("data: ") and '"counters"' in first
+    deadline = time.monotonic() + 5
+    while app.state.streams and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert app.state.streams == 0
+
+
+def test_a_scan_is_refused_once_the_budget_is_spent(client_for, monkeypatch) -> None:
+    from app.budget import Budget
+
+    fake_boards(monkeypatch)
+    client = client_for(FakeModel())
+    Budget(app.state.engine.metrics, daily_usd=0)
+    response = client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme"})
+    assert response.status_code == 429
+    assert "today's budget" in response.json()["detail"]
+
+
+def test_a_greenhouse_outage_is_reported_as_such(client_for, monkeypatch) -> None:
+    async def down(client, url: str):
+        raise httpx.ConnectError("Greenhouse is down")
+
+    monkeypatch.setattr(main.greenhouse, "find_board", down)
+    client = client_for(FakeModel())
+    response = client.post("/api/scan", json={"url": "https://www.acme.com/careers"})
+    assert response.status_code == 502
+    assert "Greenhouse didn't answer" in response.json()["detail"]

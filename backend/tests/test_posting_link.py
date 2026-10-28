@@ -105,3 +105,20 @@ def test_direct_links() -> None:
         "https://www.linkedin.com/jobs/view/123"
     )
     assert direct_link("https://jobs.lever.co/acme/abc") == "https://jobs.lever.co/acme/abc"
+
+
+class DownTavily(FakeTavily):
+    async def extract(self, urls: str, **kwargs) -> dict:
+        raise ConnectionError("Tavily is down")
+
+
+class EmptyTavily(FakeTavily):
+    async def extract(self, urls: str, **kwargs) -> dict:
+        return {"results": [], "failed_results": [{"url": urls, "error": "timeout"}]}
+
+
+@pytest.mark.parametrize("tavily_class", [DownTavily, EmptyTavily])
+async def test_a_page_tavily_cannot_read_asks_for_the_text(tavily, monkeypatch, tavily_class) -> None:
+    monkeypatch.setattr(posting_link, "AsyncTavilyClient", tavily_class)
+    with pytest.raises(UnreadableLink, match="paste the posting's text instead"):
+        await read(httpx.AsyncClient(), "https://jobs.lever.co/acme/abc")
