@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { api, loadSample, type BatchRow, type BatchView, type Label, type SampleBatch, type Status } from './api'
 import { LabelIcon, Spinner } from './components'
-import { SIGNAL_NAMES } from './lib'
+import { LABEL_STYLE, SIGNAL_NAMES, safeHref } from './lib'
 
 type Scan = { id: string; company: string; found: number; scanning: number }
 
-const GROUPS: { label: Label; name: string; tint: string }[] = [
-  { label: 'clear', name: 'Open to you', tint: 'bg-good/12' },
-  { label: 'unclear', name: 'Ask first', tint: 'bg-warning/18' },
-  { label: 'blocked', name: 'Not open to you', tint: 'bg-critical/12' },
+// Scan results speak to the reader's choice: where to apply.
+const GROUPS: { label: Label; name: string }[] = [
+  { label: 'clear', name: 'Open to you' },
+  { label: 'unclear', name: 'Ask first' },
+  { label: 'blocked', name: 'Not open to you' },
 ]
 const ORDER: Record<Label, number> = { clear: 0, unclear: 1, blocked: 2 }
 // Boards with a recorded scan, so the examples work while the engine sleeps. For H-1B they range
@@ -245,7 +246,7 @@ function JobCard({ row, index }: { row: BatchRow; index: number }) {
       className="flex animate-rise flex-col rounded-3xl border border-line bg-surface p-2 transition hover:-translate-y-0.5 hover:shadow-lg"
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
-      <div className={`flex-1 rounded-2xl p-4 ${group.tint}`}>
+      <div className={`flex-1 rounded-2xl p-4 ${LABEL_STYLE[verdict.label].tint}`}>
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-xs font-semibold">
             <LabelIcon label={verdict.label} className="size-3.5" />
@@ -293,7 +294,7 @@ function JobCard({ row, index }: { row: BatchRow; index: number }) {
             {open ? 'Less' : 'Details'}
           </button>
           <a
-            href={row.url}
+            href={safeHref(row.url)}
             target="_blank"
             rel="noreferrer"
             aria-label={`Open the posting for ${row.title}`}

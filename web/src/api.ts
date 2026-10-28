@@ -6,7 +6,7 @@ export type Label = 'clear' | 'unclear' | 'blocked'
 
 export type Signal = { type: string; quote: string; reading: string }
 
-export type Analysis = {
+type Analysis = {
   company: string | null
   signals: Signal[]
   unverified_quotes: number
@@ -67,7 +67,7 @@ export type BatchView = {
   items: BatchRow[]
 }
 
-export type Histogram = { count: number; p50: number | null; p95: number | null; max: number | null }
+type Histogram = { count: number; p50: number | null; p95: number | null; max: number | null }
 
 export type Snapshot = {
   backend: string

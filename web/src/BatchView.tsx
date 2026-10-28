@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, loadSample, type BatchRow, type BatchView as View, type Label, type SampleBatch, type Status } from './api'
 import { Card, Spinner, VerdictBadge } from './components'
-import { SIGNAL_NAMES, labelName, useUrlParam } from './lib'
+import { SIGNAL_NAMES, labelName, safeHref, useUrlParam } from './lib'
 
 type Props = { status: Status; live: boolean; engineLive: boolean }
 const FILTERS = ['all', 'clear', 'unclear', 'blocked'] as const
@@ -231,7 +231,7 @@ function Row({ row }: { row: BatchRow }) {
   return (
     <li className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-start sm:gap-4">
       <div className="min-w-0">
-        <a href={row.url} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+        <a href={safeHref(row.url)} target="_blank" rel="noreferrer" className="font-medium hover:underline">
           {row.title}
         </a>
         <p className="text-sm text-ink-2">

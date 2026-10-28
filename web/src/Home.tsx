@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import type { Status } from './api'
+import type { Label, Status } from './api'
 import { BoardScan } from './BoardScan'
 import { CheckView } from './CheckView'
 import { LabelIcon, StatusPicker } from './components'
-import { useReveal } from './lib'
+import { LABEL_STYLE, useReveal } from './lib'
 
 // What SponsorLens looks for, floating around the hero in place of photos.
 const ORBIT = [
@@ -176,9 +176,8 @@ function Hero() {
   )
 }
 
-function MiniVerdict({ label, title, quote, className = '' }: { label: 'clear' | 'unclear' | 'blocked'; title: string; quote: string; className?: string }) {
-  const tint = { clear: 'bg-good/12', unclear: 'bg-warning/18', blocked: 'bg-critical/12' }[label]
-  const name = { clear: 'Clear', unclear: 'Unclear', blocked: 'Blocked' }[label]
+function MiniVerdict({ label, title, quote, className = '' }: { label: Label; title: string; quote: string; className?: string }) {
+  const { tint, name } = LABEL_STYLE[label]
   return (
     <div className={`w-56 animate-rise rounded-3xl border border-line bg-surface p-2 text-left shadow-xl ${className}`}>
       <div className={`rounded-2xl p-4 ${tint}`}>

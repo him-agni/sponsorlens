@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api, loadSample, type AnalyzeResponse, type CompanyContext, type FactKind, type Glance, type LinkedPosting, type SampleExamples, type Status } from './api'
 import { Card, LabelIcon, Spinner, VerdictBadge } from './components'
-import { SIGNAL_NAMES, STATUSES, headline, highlight, labelInk, labelName } from './lib'
+import { LABEL_STYLE, SIGNAL_NAMES, STATUSES, headline, highlight, labelInk, labelName, safeHref } from './lib'
 
 type Props = { status: Status; onStatus: (s: Status) => void; live: boolean }
 
@@ -102,7 +102,7 @@ export function CheckView({ status, onStatus, live }: Props) {
         {linkedFrom && (
           <p className="mt-1 text-xs text-muted">
             Text read from{' '}
-            <a href={linkedFrom} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+            <a href={safeHref(linkedFrom)} target="_blank" rel="noreferrer" className="text-accent hover:underline">
               {new URL(linkedFrom).hostname}
             </a>
           </p>
@@ -258,7 +258,7 @@ function ContextPanel({ company, context }: { company: string | null; context: C
         <ul className="mt-3 grid gap-3">
           {context.sources.map((source) => (
             <li key={source.url}>
-              <a href={source.url} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
+              <a href={safeHref(source.url)} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">
                 {source.title}
               </a>
               <p className="mt-0.5 line-clamp-2 text-sm text-ink-2">{source.snippet}</p>
@@ -283,7 +283,7 @@ function PostingText({ result, status }: { result: AnalyzeResponse; status: Stat
     () => highlight(result.text, result.analysis.signals, verdict.deciding),
     [result, verdict],
   )
-  const tint = { clear: 'bg-good/20', unclear: 'bg-warning/30', blocked: 'bg-critical/20' }[verdict.label]
+  const tint = LABEL_STYLE[verdict.label].mark
   return (
     <Card>
       <p className="text-xs font-medium uppercase tracking-wide text-muted">The posting, with the lines that decide it marked</p>

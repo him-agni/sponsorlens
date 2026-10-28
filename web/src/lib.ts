@@ -8,13 +8,24 @@ export const STATUSES: { id: Status; short: string; reader: string }[] = [
   { id: 'green_card', short: 'Green card', reader: 'green card holders' },
 ]
 
-export const statusInfo = (id: Status) => STATUSES.find((s) => s.id === id) ?? STATUSES[2]
+const statusInfo = (id: Status) => STATUSES.find((s) => s.id === id) ?? STATUSES[2]
 
-// Status colors are fixed, and always shown with an icon and the label's name.
-export const LABEL_STYLE: Record<Label, { name: string; fill: string; ink: string; onFill: string }> = {
-  clear: { name: 'Clear', fill: 'bg-good', ink: 'text-good-ink', onFill: 'text-white' },
-  unclear: { name: 'Unclear', fill: 'bg-warning', ink: 'text-warning-ink', onFill: 'text-black' },
-  blocked: { name: 'Blocked', fill: 'bg-critical', ink: 'text-critical-ink', onFill: 'text-white' },
+// Status colors are fixed, and always shown with an icon and the label's name. `tint` is a soft
+// card background; `mark` highlights a deciding line in the posting.
+export const LABEL_STYLE: Record<Label, { name: string; fill: string; ink: string; onFill: string; tint: string; mark: string }> = {
+  clear: { name: 'Clear', fill: 'bg-good', ink: 'text-good-ink', onFill: 'text-white', tint: 'bg-good/12', mark: 'bg-good/20' },
+  unclear: { name: 'Unclear', fill: 'bg-warning', ink: 'text-warning-ink', onFill: 'text-black', tint: 'bg-warning/18', mark: 'bg-warning/30' },
+  blocked: { name: 'Blocked', fill: 'bg-critical', ink: 'text-critical-ink', onFill: 'text-white', tint: 'bg-critical/12', mark: 'bg-critical/20' },
+}
+
+/** A link from data (search results, job boards) only if it is http or https, so it can never run script. */
+export function safeHref(url: string | null | undefined): string | undefined {
+  try {
+    const parsed = new URL(url ?? '')
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : undefined
+  } catch {
+    return undefined
+  }
 }
 
 export const labelName = (label: Label) => LABEL_STYLE[label].name
@@ -89,7 +100,7 @@ export function useUrlParam<T extends string>(name: string, fallback: T, allowed
   return [value, update] as const
 }
 
-export type Segment = { text: string; signal?: Signal; deciding?: boolean }
+type Segment = { text: string; signal?: Signal; deciding?: boolean }
 
 /** Split the posting into plain text and quoted signals. Matching ignores case and spacing, like the backend's check. */
 export function highlight(text: string, signals: Signal[], deciding: Signal[]): Segment[] {
