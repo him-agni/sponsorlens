@@ -7,6 +7,7 @@ never stores or redistributes it, and links every verdict back to the original p
 
 import re
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -73,6 +74,41 @@ async def fetch_board(client: httpx.AsyncClient, token: str) -> list[Posting]:
 
 # A company's board, or any page on it: https://job-boards.greenhouse.io/stripe, .../stripe/jobs/8172508.
 BOARD_URL = re.compile(r"^https://(?:boards|job-boards)\.greenhouse\.io/(?:embed/job_board\?for=)?(?P<token>[\w-]+)")
+
+async def board_name(client: httpx.AsyncClient, token: str) -> str | None:
+    """The company name on a board, or None if Greenhouse has no board by that token."""
+    response = await client.get(f"{BASE_URL}/{token}")
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    return response.json().get("name")
+
+
+def site_token(url: str) -> str | None:
+    """The likely board token for a company's own careers site: www.databricks.com/careers gives databricks."""
+    host = (urlsplit(url).hostname or "").lower()
+    labels = [label for label in host.split(".") if label not in ("www", "careers", "jobs", "boards")]
+    return labels[-2] if len(labels) >= 2 else None
+
+
+async def find_board(client: httpx.AsyncClient, url: str) -> str | None:
+    """The board token for a Greenhouse board link, or for a company site whose jobs are on Greenhouse.
+
+    For a company site only Greenhouse's API is asked, never the site itself, and the board must carry
+    the site's name, so a common word can't land on another company's board.
+    """
+    if match := BOARD_URL.match(url):
+        return match["token"].lower()
+    token = site_token(url)
+    if not token:
+        return None
+    name = await board_name(client, token)
+    return token if name and _squash(token) in _squash(name) else None
+
+
+def _squash(text: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
 
 # A job's own page on a Greenhouse-hosted board, e.g. https://job-boards.greenhouse.io/stripe/jobs/8172508.
 JOB_URL = re.compile(r"^https://(?:boards|job-boards)\.greenhouse\.io/(?P<token>[\w-]+)/jobs/(?P<id>\d+)")

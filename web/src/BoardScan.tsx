@@ -104,8 +104,8 @@ export function BoardScan({ status, live }: { status: Status; live: boolean }) {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && live && url.trim() && start()}
-            placeholder="https://job-boards.greenhouse.io/stripe"
-            aria-label="Greenhouse job board link"
+            placeholder="https://www.databricks.com/company/careers"
+            aria-label="Company careers page or Greenhouse board link"
             className="w-full rounded-xl border border-line bg-page px-3.5 py-2.5 text-sm placeholder:text-muted focus:outline-2 focus:outline-accent"
           />
           <input
@@ -140,7 +140,8 @@ export function BoardScan({ status, live }: { status: Status; live: boolean }) {
           ))}
         </div>
         <p className="mt-3 text-xs text-muted">
-          Greenhouse boards for now. {live ? 'The public demo checks up to 10 jobs per scan.' : 'Scanning a new board needs the live engine.'}
+          A company's careers page or Greenhouse board, for companies whose jobs are on Greenhouse.{' '}
+          {live ? 'The public demo checks up to 10 jobs per scan.' : 'Scanning a new board needs the live engine.'}
         </p>
         {error && <p className="mt-3 text-sm text-critical-ink">{error}</p>}
       </div>

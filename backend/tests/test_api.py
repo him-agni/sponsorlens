@@ -196,7 +196,19 @@ def fake_boards(monkeypatch, count: int = 12) -> None:
             raise httpx.HTTPStatusError("404", request=httpx.Request("GET", "x"), response=httpx.Response(404))
         return postings_for(token, count)
 
+    async def fake_name(client, token: str):
+        return {"acme": "Acme Robotics"}.get(token)
+
     monkeypatch.setattr(main.greenhouse, "fetch_board", fake_board)
+    monkeypatch.setattr(main.greenhouse, "board_name", fake_name)
+
+
+def test_a_company_careers_page_scans_its_greenhouse_board(client_for, monkeypatch) -> None:
+    fake_boards(monkeypatch)
+    client = client_for(FakeModel(latency=0))
+    started = client.post("/api/scan", json={"url": "https://www.acme.com/company/careers/open-positions"})
+    assert started.status_code == 202
+    assert started.json()["company"] == "acme"
 
 
 def test_a_board_scan_checks_matching_jobs_even_with_batches_off(client_for, monkeypatch) -> None:
@@ -225,7 +237,10 @@ def test_a_board_scan_explains_bad_links(client_for, monkeypatch) -> None:
     client = client_for(FakeModel())
     not_greenhouse = client.post("/api/scan", json={"url": "https://example.com/careers"})
     assert not_greenhouse.status_code == 422
-    assert "Greenhouse job board link" in not_greenhouse.json()["detail"]
+    assert "Couldn't find a Greenhouse job board for example.com" in not_greenhouse.json()["detail"]
+    assert "a link" in client.post("/api/scan", json={"url": "stripe"}).json()["detail"]
+    search = client.post("/api/scan", json={"url": "https://my.greenhouse.io/jobs/search?query=frontend"})
+    assert "needs a sign-in" in search.json()["detail"]
     unknown = client.post("/api/scan", json={"url": "https://boards.greenhouse.io/nosuchco"})
     assert "Couldn't find" in unknown.json()["detail"]
     none_match = client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme", "keyword": "chef"})

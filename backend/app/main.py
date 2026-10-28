@@ -4,6 +4,7 @@ import logging
 import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -317,10 +318,27 @@ async def scan_board(request: Request, body: ScanRequest, batches: BatchRunner =
     Unlike batches this stays on in the hosted demo, kept small: at most scan_limit jobs, each counted
     against the hourly limit, and every model call still inside the daily budget.
     """
-    match = greenhouse.BOARD_URL.match(body.url.strip())
-    if not match:
-        raise HTTPException(422, "Paste a Greenhouse job board link, like https://job-boards.greenhouse.io/stripe")
-    token = match["token"].lower()
+    url = body.url.strip()
+    if url.startswith(("https://my.greenhouse.io", "http://my.greenhouse.io")):
+        # Greenhouse's search across companies redirects to a sign-in page, so it can't be read.
+        raise HTTPException(
+            422,
+            "That's Greenhouse's job search across companies, which needs a sign-in. Paste one company's board "
+            "(like https://job-boards.greenhouse.io/stripe), or open a job and check its link above.",
+        )
+    if not url.startswith(("https://", "http://")):
+        raise HTTPException(422, "Paste a link to a company's jobs page, like https://job-boards.greenhouse.io/stripe")
+    try:
+        token = await greenhouse.find_board(request.app.state.http, url)
+    except httpx.HTTPError:
+        raise HTTPException(502, "Greenhouse didn't answer. Try again in a minute.")
+    if token is None:
+        site = urlsplit(url).hostname
+        raise HTTPException(
+            422,
+            f"Couldn't find a Greenhouse job board for {site}. Board scans work for companies whose jobs are on "
+            "Greenhouse; you can still check single jobs from any site above.",
+        )
     keyword = (body.keyword or "").strip() or None
     try:
         postings = await greenhouse.fetch_board(request.app.state.http, token)

@@ -1,6 +1,6 @@
 import httpx
 
-from app.greenhouse import fetch_board, is_us, parse_board
+from app.greenhouse import fetch_board, find_board, is_us, parse_board, site_token
 
 
 def job(id: int, location: str, offices: list[str] | None = None, content: str = "&lt;p&gt;Hi&lt;/p&gt;") -> dict:
@@ -45,3 +45,24 @@ async def test_fetch_asks_for_content() -> None:
         postings = await fetch_board(client, "acme")
     assert seen["url"] == "https://boards-api.greenhouse.io/v1/boards/acme/jobs?content=true"
     assert len(postings) == 1
+
+
+def test_a_company_site_gives_its_likely_board_token() -> None:
+    assert site_token("https://www.databricks.com/company/careers/open-positions") == "databricks"
+    assert site_token("https://careers.airbnb.com/positions/") == "airbnb"
+    assert site_token("https://stripe.com/jobs/search?gh_jid=8172508") == "stripe"
+    assert site_token("not a link") is None
+
+
+async def test_a_company_site_is_matched_only_to_a_board_with_its_name() -> None:
+    names = {"databricks": "Databricks", "jobs": "Some Other Company", "acme": "Totally Different"}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        token = request.url.path.rsplit("/", 1)[-1]
+        return httpx.Response(200, json={"name": names[token]}) if token in names else httpx.Response(404)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        assert await find_board(client, "https://www.databricks.com/careers") == "databricks"
+        assert await find_board(client, "https://job-boards.greenhouse.io/Stripe") == "stripe"
+        assert await find_board(client, "https://acme.com/careers") is None
+        assert await find_board(client, "https://notion.so/careers") is None

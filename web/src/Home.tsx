@@ -84,7 +84,7 @@ export function Home({ status, onStatus, live }: { status: Status; onStatus: (s:
         id="scan"
         pill="Scan a board"
         title={<>Scan a whole job board. <span className="mark">See where to apply.</span></>}
-        intro="Paste a company's Greenhouse board and every US job comes back sorted: open to you, ask first, or not open."
+        intro="Paste a company's careers page and every US job comes back sorted: open to you, ask first, or not open."
         tinted
       >
         <BoardScan status={status} live={live} />
