@@ -9,7 +9,8 @@ from app.company_context import CompanyContext
 from app.config import settings
 from app.engine.engine import Engine
 from app.engine.fake_model import FakeModel
-from app.main import app, get_context_lookup
+from app.main import app, get_context_lookup, get_link_reader
+from app.posting_link import LinkedPosting, UnreadableLink
 from test_analyzer import ScriptedModel
 
 
@@ -111,6 +112,22 @@ def test_the_public_endpoints_share_an_hourly_limit(client_for, monkeypatch) -> 
 
 async def _none() -> None:
     return None
+
+
+def test_read_link_returns_the_posting_or_says_why_not(client_for) -> None:
+    async def fake_read(url: str) -> LinkedPosting:
+        if "linkedin" in url:
+            raise UnreadableLink("paste the posting's text instead")
+        return LinkedPosting(url=url, text="We cannot sponsor visas.")
+
+    app.dependency_overrides[get_link_reader] = lambda: fake_read
+    client = client_for(FakeModel())
+    read = client.post("/api/read-link", json={"url": "https://jobs.lever.co/acme/abc"})
+    assert read.json()["text"] == "We cannot sponsor visas."
+    refused = client.post("/api/read-link", json={"url": "https://www.linkedin.com/jobs/view/1"})
+    assert refused.status_code == 422
+    assert "paste the posting" in refused.json()["detail"]
+    assert client.post("/api/read-link", json={"url": "not a link"}).status_code == 422
 
 
 def test_batches_can_be_switched_off(client_for, monkeypatch) -> None:

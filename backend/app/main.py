@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from app import company_context, greenhouse
+from app import company_context, greenhouse, posting_link
 from app.batches import BatchRunner
 from app.budget import Budget, BudgetExceeded, HourlyLimit
 from app.company_context import CompanyContext
@@ -24,6 +24,7 @@ from app.fixtures import numbered_postings
 from app.greenhouse import PRESET_COMPANIES
 from app.llm import TokenFactoryModel, make_client
 from app.normalize import normalize
+from app.posting_link import LinkedPosting, UnreadableLink
 from app.rules import decide
 from app.schemas import Analysis, Label, Status, Verdict
 
@@ -57,7 +58,7 @@ async def lifespan(app: FastAPI):
     app.state.background = set()
     app.state.batches = None
     app.state.hourly = HourlyLimit(settings.hourly_requests)
-    http = httpx.AsyncClient(timeout=30, headers={"User-Agent": "SponsorLens/0.1 (hackathon demo)"})
+    http = app.state.http = httpx.AsyncClient(timeout=30, headers={"User-Agent": "SponsorLens/0.1 (hackathon demo)"})
     if engine:
         await engine.start()  # replays the log
         app.state.batches = BatchRunner(engine, lambda token: greenhouse.fetch_board(http, token))
@@ -166,6 +167,25 @@ async def analyze(
     return AnalyzeResponse(
         analysis=analysis, verdict=verdict, verdicts=verdicts, text=normalize(request.text), company_context=context
     )
+
+
+def get_link_reader(request: Request) -> Callable[[str], Awaitable[LinkedPosting]]:
+    return lambda url: posting_link.read(request.app.state.http, url)
+
+
+class LinkRequest(BaseModel):
+    url: str = Field(pattern=r"^https?://\S+$", max_length=2000)
+
+
+@app.post("/api/read-link", dependencies=[Depends(within_hourly_limit)])
+async def read_link(
+    body: LinkRequest, read: Callable[[str], Awaitable[LinkedPosting]] = Depends(get_link_reader)
+) -> LinkedPosting:
+    """A posting's text from its link, for the paste box. Nothing is analyzed or stored here."""
+    try:
+        return await read(body.url)
+    except UnreadableLink as error:
+        raise HTTPException(422, str(error))
 
 
 @app.get("/api/company-context", dependencies=[Depends(within_hourly_limit)])

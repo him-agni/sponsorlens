@@ -69,3 +69,22 @@ async def fetch_board(client: httpx.AsyncClient, token: str) -> list[Posting]:
     response = await client.get(f"{BASE_URL}/{token}/jobs", params={"content": "true"})
     response.raise_for_status()
     return parse_board(token, response.json())
+
+
+# A job's own page on a Greenhouse-hosted board, e.g. https://job-boards.greenhouse.io/stripe/jobs/8172508.
+JOB_URL = re.compile(r"^https://(?:boards|job-boards)\.greenhouse\.io/(?P<token>[\w-]+)/jobs/(?P<id>\d+)")
+
+
+async def fetch_job(client: httpx.AsyncClient, token: str, job_id: str) -> Posting:
+    """One job by ID, wherever it is located: someone pasting its link wants it checked."""
+    response = await client.get(f"{BASE_URL}/{token}/jobs/{job_id}")
+    response.raise_for_status()
+    job = response.json()
+    return Posting(
+        source=f"greenhouse:{token}:{job['id']}",
+        company=job.get("company_name") or token,
+        title=job.get("title", ""),
+        url=job.get("absolute_url", ""),
+        location=(job.get("location") or {}).get("name") or "",
+        text=job.get("content") or "",
+    )
