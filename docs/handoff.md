@@ -58,7 +58,7 @@ From `backend/`:
 | `uv sync` | Install dependencies | — |
 | `uv run uvicorn app.main:app --reload` | API on :8000 (live model if `.env` has a key) | Credits per analysis |
 | `MODEL_BACKEND=fake uv run uvicorn app.main:app` | API on the fake model | Free |
-| `uv run pytest` | 185 tests, fake model only | Free |
+| `uv run pytest` | 194 tests, fake model only; add `--cov=app --cov-report=term-missing` for coverage (99% on Oct 28) | Free |
 | `uv run python -m scripts.check_setup` | Pings both models, reads rate limits, tests JSON mode and Tavily | A few cents |
 | `uv run python -m scripts.eval` | Phase 1 gate: 15 fixtures on the real models | About $0.10 |
 | `uv run python -m scripts.rehearse` | Phase 2 gate: 200 fake jobs, live queue view | Free |
@@ -66,7 +66,7 @@ From `backend/`:
 | `uv run python -m scripts.kill_test` | Phase 3 gate: real Greenhouse postings, fake model, kill and resume | Free |
 | `uv run python -m scripts.record_sample --api URL` | Record the web app's sample run (4 examples, a 200-posting batch, a metrics timeline) into `web/public/sample/` | Free on the fake model; about $1 to $2 live |
 
-From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, `/health` and `/metrics` to :8000). `npm run build` and `npm run lint` (oxlint) must both be clean.
+From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, `/health` and `/metrics` to :8000). `npm run build` and `npm run lint` (oxlint) must both be clean. `npm test` runs 26 Vitest unit and component tests (jsdom; `src/test/network.ts` stands in for the network and serves the recorded samples). `npm run test:e2e` runs 10 Playwright tests in the installed Edge, desktop and phone: it starts the real API on the fake model (port 8000, Tavily key overridden so nothing is spent) and Vite on :5175; link reading and board scans are answered in the test so they stay offline. Test files have their own `tsconfig.test.json`.
 
 ## Code map
 

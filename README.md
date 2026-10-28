@@ -32,6 +32,13 @@ uv run pytest
 uv run python -m scripts.eval
 ```
 
+The web app has unit and component tests (Vitest) and end-to-end tests (Playwright, in the installed Microsoft Edge, against the API on the fake model). From `web/`:
+
+```bash
+npm test
+npm run test:e2e
+```
+
 Rehearse a 200-posting batch on a fake model and watch the queue fill, hold at capacity and drain. It costs nothing:
 
 ```bash
