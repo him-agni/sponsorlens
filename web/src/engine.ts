@@ -3,9 +3,16 @@ import { API_URL } from './api'
 
 export type EngineState = 'checking' | 'waking' | 'live' | 'no-engine' | 'offline'
 
+export type Engine = {
+  state: EngineState
+  /** False on the hosted demo, where batches would spend credits; the app shows the recorded batch instead. */
+  liveBatches: boolean
+}
+
 /** Whether the live engine can answer. Anything but 'live' means the app shows its sample run. */
-export function useEngine(): EngineState {
+export function useEngine(): Engine {
   const [state, setState] = useState<EngineState>('checking')
+  const [liveBatches, setLiveBatches] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -18,6 +25,8 @@ export function useEngine(): EngineState {
       try {
         const health = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(90_000) })
         if (!health.ok) throw new Error()
+        const { live_batches } = await health.json()
+        if (!cancelled) setLiveBatches(live_batches !== false)
         const metrics = await fetch(`${API_URL}/metrics`)
         result = metrics.ok ? 'live' : 'no-engine'
       } catch {
@@ -37,5 +46,5 @@ export function useEngine(): EngineState {
     }
   }, [])
 
-  return state
+  return { state, liveBatches }
 }

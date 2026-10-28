@@ -3,12 +3,12 @@ import { api, loadSample, type BatchRow, type BatchView as View, type Label, typ
 import { Card, Spinner, VerdictBadge } from './components'
 import { SIGNAL_NAMES, labelName, useUrlParam } from './lib'
 
-type Props = { status: Status; live: boolean }
+type Props = { status: Status; live: boolean; engineLive: boolean }
 const FILTERS = ['all', 'clear', 'unclear', 'blocked'] as const
 const PAGE = 50
 type Filter = (typeof FILTERS)[number]
 
-export function BatchView({ status, live }: Props) {
+export function BatchView({ status, live, engineLive }: Props) {
   const [batchId, setBatchId] = useUrlParam<string>('batch', '')
   const [filter, setFilter] = useUrlParam<Filter>('verdict', 'all', FILTERS)
   const [fetched, setView] = useState<View | null>(null)
@@ -49,7 +49,7 @@ export function BatchView({ status, live }: Props) {
 
   return (
     <div className="grid gap-6">
-      <BatchControls live={live} status={status} onStarted={setBatchId} />
+      <BatchControls live={live} engineLive={engineLive} status={status} onStarted={setBatchId} />
       {error && <p className="text-sm text-critical-ink">{error}</p>}
       {view && (
         <>
@@ -76,7 +76,17 @@ export function BatchView({ status, live }: Props) {
   )
 }
 
-function BatchControls({ live, status, onStarted }: { live: boolean; status: Status; onStarted: (id: string) => void }) {
+function BatchControls({
+  live,
+  engineLive,
+  status,
+  onStarted,
+}: {
+  live: boolean
+  engineLive: boolean
+  status: Status
+  onStarted: (id: string) => void
+}) {
   const [presets, setPresets] = useState<string[]>([])
   const [chosen, setChosen] = useState<Set<string>>(new Set())
   const [perCompany, setPerCompany] = useState(10)
@@ -165,7 +175,11 @@ function BatchControls({ live, status, onStarted }: { live: boolean; status: Sta
           {error && <p className="mt-3 text-sm text-critical-ink">{error}</p>}
         </>
       ) : (
-        <p className="mt-3 text-sm text-muted">Starting a batch needs the live engine. Below is a recorded 200-posting run.</p>
+        <p className="mt-3 text-sm text-muted">
+          {engineLive
+            ? 'The hosted demo checks single postings live but not batches, which would use up its model credits. Below is a recorded 200-posting run; run SponsorLens locally to start your own.'
+            : 'Starting a batch needs the live engine. Below is a recorded 200-posting run.'}
+        </p>
       )}
     </Card>
   )

@@ -17,7 +17,9 @@ function App() {
   const [view, setView] = useUrlParam<(typeof VIEWS)[number]>('view', 'check', VIEWS)
   const [status, setStatus] = useUrlParam<Status>('status', 'h1b', STATUS_IDS)
   const engine = useEngine()
-  const live = engine === 'live'
+  const live = engine.state === 'live'
+  // Where batches are off, the batch and engine views replay the recorded run.
+  const liveBatches = live && engine.liveBatches
   const [sample, setSample] = useState<{ recorded: string; backend: string }>()
 
   useEffect(() => {
@@ -28,7 +30,7 @@ function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <EngineBanner state={engine} recorded={sample?.recorded} backend={sample?.backend} />
+      <EngineBanner state={engine.state} recorded={sample?.recorded} backend={sample?.backend} />
       <header className="border-b border-line">
         <div className="mx-auto max-w-5xl px-4 pt-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -65,10 +67,10 @@ function App() {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
         {view === 'check' && <CheckView status={status} onStatus={setStatus} live={live} />}
-        {view === 'batch' && <BatchView status={status} live={live} />}
+        {view === 'batch' && <BatchView status={status} live={liveBatches} engineLive={live} />}
         {view === 'engine' && (
           <Suspense fallback={<Card>Loading the dashboard…</Card>}>
-            <DashboardView key={String(live)} live={live} />
+            <DashboardView key={String(liveBatches)} live={liveBatches} />
           </Suspense>
         )}
       </main>
