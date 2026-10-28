@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { API_URL } from './api'
 
-export type EngineState = 'checking' | 'waking' | 'live' | 'no-engine' | 'offline'
+// 'ended': the hosted demo is past its last live day and makes no paid calls; the app shows recordings.
+export type EngineState = 'checking' | 'waking' | 'live' | 'no-engine' | 'ended' | 'offline'
 
 export type Engine = {
   state: EngineState
@@ -25,10 +26,10 @@ export function useEngine(): Engine {
       try {
         const health = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(90_000) })
         if (!health.ok) throw new Error()
-        const { live_batches } = await health.json()
+        const { live, live_batches } = await health.json()
         if (!cancelled) setLiveBatches(live_batches !== false)
-        const metrics = await fetch(`${API_URL}/metrics`)
-        result = metrics.ok ? 'live' : 'no-engine'
+        if (live === false) result = 'ended'
+        else result = (await fetch(`${API_URL}/metrics`)).ok ? 'live' : 'no-engine'
       } catch {
         result = 'offline'
       } finally {
@@ -36,7 +37,8 @@ export function useEngine(): Engine {
       }
       if (cancelled) return
       setState(result)
-      if (result !== 'live') retry = setTimeout(probe, 30_000)
+      // An ended demo stays ended; anything else not live may come back, so look again.
+      if (result !== 'live' && result !== 'ended') retry = setTimeout(probe, 30_000)
     }
 
     probe()

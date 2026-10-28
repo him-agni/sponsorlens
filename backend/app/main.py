@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app import company_context, greenhouse, posting_link
 from app.batches import BatchRunner, matching
-from app.budget import Budget, BudgetExceeded, HourlyLimit
+from app.budget import Budget, BudgetExceeded, HourlyLimit, demo_over
 from app.company_context import CompanyContext
 from app.config import settings
 from app.engine.engine import Engine
@@ -39,7 +39,7 @@ def build_engine() -> Engine | None:
     if settings.model_backend == "fake":
         model, nano, ultra = FakeModel(latency=settings.fake_latency, metrics=metrics), "fake-nano", "fake-ultra"
     elif settings.nebius_api_key:
-        budget = Budget(metrics, settings.daily_budget_usd)
+        budget = Budget(metrics, settings.daily_budget_usd, until=settings.live_until)
         model, nano, ultra = TokenFactoryModel(metrics=metrics, budget=budget), settings.nano_model, settings.ultra_model
     else:
         return None
@@ -81,8 +81,17 @@ app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_me
 
 @app.get("/health")
 async def health() -> dict:
-    # The web app reads live_batches to show the recorded batch where batches would spend credits.
-    return {"status": "ok", "live_batches": settings.live_batches}
+    # The web app reads these to show recorded runs where live ones would spend credits.
+    return {"status": "ok", "live": not demo_over(settings.live_until), "live_batches": settings.live_batches}
+
+
+def live_demo_open() -> None:
+    """After the last live day, nothing in the demo may call a paid service (Token Factory or Tavily)."""
+    if demo_over(settings.live_until):
+        until = settings.live_until
+        raise HTTPException(
+            503, f"The live demo ended on {until:%B} {until.day}, {until.year}. The examples and recorded scans still work."
+        )
 
 
 def within_hourly_limit(request: Request) -> None:
@@ -92,7 +101,7 @@ def within_hourly_limit(request: Request) -> None:
         raise HTTPException(429, "The live demo is busy this hour. The examples still work; try again in a few minutes.")
 
 
-@app.get("/api/ping-model", dependencies=[Depends(within_hourly_limit)])
+@app.get("/api/ping-model", dependencies=[Depends(live_demo_open), Depends(within_hourly_limit)])
 async def ping_model() -> dict:
     """Phase 0 gate: one round trip to Nemotron on Token Factory."""
     if not settings.nebius_api_key or not settings.nano_model:
@@ -153,7 +162,7 @@ class AnalyzeResponse(BaseModel):
     glance: Glance | None = None
 
 
-@app.post("/api/analyze", dependencies=[Depends(within_hourly_limit)])
+@app.post("/api/analyze", dependencies=[Depends(live_demo_open), Depends(within_hourly_limit)])
 async def analyze(
     request: AnalyzeRequest,
     engine: Engine = Depends(get_engine),
@@ -203,7 +212,7 @@ class LinkRequest(BaseModel):
     url: str = Field(pattern=r"^https?://\S+$", max_length=2000)
 
 
-@app.post("/api/read-link", dependencies=[Depends(within_hourly_limit)])
+@app.post("/api/read-link", dependencies=[Depends(live_demo_open), Depends(within_hourly_limit)])
 async def read_link(
     body: LinkRequest, read: Callable[[str], Awaitable[LinkedPosting]] = Depends(get_link_reader)
 ) -> LinkedPosting:
@@ -214,7 +223,7 @@ async def read_link(
         raise HTTPException(422, str(error))
 
 
-@app.get("/api/company-context", dependencies=[Depends(within_hourly_limit)])
+@app.get("/api/company-context", dependencies=[Depends(live_demo_open), Depends(within_hourly_limit)])
 async def get_company_context(
     company: str = Query(min_length=1, max_length=200),
     lookup: Callable[[str], Awaitable[CompanyContext | None]] = Depends(get_context_lookup),
@@ -281,7 +290,7 @@ class BatchRequest(BaseModel):
         return list(dict.fromkeys(companies))
 
 
-@app.post("/api/batch", status_code=202)
+@app.post("/api/batch", status_code=202, dependencies=[Depends(live_demo_open)])
 async def create_batch(body: BatchRequest, batches: BatchRunner = Depends(get_batches)) -> dict:
     if not settings.live_batches:
         raise HTTPException(403, "Batches are off on the hosted demo, which shows a recorded run instead")
@@ -301,7 +310,7 @@ def budget_spent(engine: Engine) -> bool:
     return limit is not None and gauges["budget_spent_micro_usd"] >= limit
 
 
-@app.post("/api/scan", status_code=202)
+@app.post("/api/scan", status_code=202, dependencies=[Depends(live_demo_open)])
 async def scan_board(request: Request, body: ScanRequest, batches: BatchRunner = Depends(get_batches)) -> dict:
     """Scan one company's Greenhouse board: its US jobs, only titles with the keyword if one is given.
 

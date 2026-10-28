@@ -1,4 +1,5 @@
 import time
+from datetime import date
 
 import httpx
 import pytest
@@ -160,7 +161,7 @@ def test_read_link_returns_the_posting_or_says_why_not(client_for) -> None:
 def test_batches_can_be_switched_off(client_for, monkeypatch) -> None:
     monkeypatch.setattr(settings, "live_batches", False)
     client = client_for(FakeModel())
-    assert client.get("/health").json() == {"status": "ok", "live_batches": False}
+    assert client.get("/health").json() == {"status": "ok", "live": True, "live_batches": False}
     response = client.post("/api/batch", json={"companies": ["stripe"]})
     assert response.status_code == 403
     assert "recorded run" in response.json()["detail"]
@@ -239,6 +240,27 @@ def test_a_board_scan_counts_every_job_against_the_hourly_limit(client_for, monk
     assert client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme"}).status_code == 202
     refused = client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme"})
     assert refused.status_code == 429
+
+
+def test_after_the_last_day_nothing_can_spend_credits(client_for, monkeypatch) -> None:
+    fake_boards(monkeypatch)
+    monkeypatch.setattr(settings, "live_until", date(2026, 12, 15))
+    monkeypatch.setattr(main, "demo_over", lambda until: True)
+    client = client_for(FakeModel())
+    assert client.get("/health").json()["live"] is False
+    paid = [
+        client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"}),
+        client.post("/api/read-link", json={"url": "https://jobs.lever.co/acme/abc"}),
+        client.get("/api/company-context", params={"company": "Acme"}),
+        client.get("/api/ping-model"),
+        client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme"}),
+        client.post("/api/batch", json={"companies": ["stripe"]}),
+    ]
+    assert [r.status_code for r in paid] == [503] * 6
+    assert "ended on December 15, 2026" in paid[0].json()["detail"]
+    # Free endpoints keep working, so the web app can show its recorded runs.
+    assert client.get("/api/presets").status_code == 200
+    assert client.get("/metrics").status_code == 200
 
 
 def test_a_batch_takes_only_preset_companies(client_for) -> None:

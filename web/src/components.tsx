@@ -126,9 +126,11 @@ export function EngineBanner({ state, recorded, backend }: { state: EngineState;
   const message =
     state === 'waking'
       ? `Waking the engine. The free server sleeps when idle and takes about a minute; meanwhile you are looking at ${sample}.`
-      : state === 'no-engine'
-        ? `The live engine is paused, so you are looking at ${sample}.`
-        : `The engine can't be reached right now, so you are looking at ${sample}.`
+      : state === 'ended'
+        ? `The live demo ended after hackathon judging, so you are looking at ${sample}. The code is on GitHub.`
+        : state === 'no-engine'
+          ? `The live engine is paused, so you are looking at ${sample}.`
+          : `The engine can't be reached right now, so you are looking at ${sample}.`
   return (
     <div role="status" className="border-b border-line bg-warning/15">
       <p className="mx-auto flex max-w-5xl items-start gap-2 px-4 py-2.5 text-sm text-ink">

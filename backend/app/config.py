@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -40,6 +41,10 @@ class Settings(BaseSettings):
     # the hourly limit on the public endpoints bounds how fast it can be spent between restarts.
     daily_budget_usd: float = 1.0
     hourly_requests: int = 60
+    # The last day of live model and Tavily calls, in Pacific time (hackathon judging ends Dec 15, 2026).
+    # From the next day the demo makes no paid calls and the web app shows its recorded examples.
+    # Running it yourself later? Set LIVE_UNTIL to a later date.
+    live_until: date | None = date(2026, 12, 15)
     # Render sets this to false, so batches there show the recorded run instead of spending credits.
     live_batches: bool = True
     # Board scans stay on everywhere, but small: at most this many jobs, each counted against the hourly limit.

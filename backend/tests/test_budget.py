@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
-from app.budget import Budget, BudgetExceeded, HourlyLimit
+from app.budget import Budget, BudgetExceeded, HourlyLimit, demo_over
 from app.engine.metrics import Metrics
 
 
@@ -39,6 +39,24 @@ def test_budget_is_on_the_dashboard() -> None:
     gauges = metrics.snapshot()["gauges"]
     assert gauges["budget_spent_micro_usd"] == 250
     assert gauges["budget_limit_micro_usd"] == 1_500_000
+
+
+def test_the_demo_ends_after_its_last_day_in_pacific_time() -> None:
+    last = date(2026, 12, 15)
+    # 11:59 pm PST on Dec 15 is 7:59 am UTC on Dec 16: still live.
+    assert not demo_over(last, datetime(2026, 12, 16, 7, 59, tzinfo=UTC))
+    assert demo_over(last, datetime(2026, 12, 16, 8, 0, tzinfo=UTC))
+    assert not demo_over(None, datetime(2099, 1, 1, tzinfo=UTC))
+
+
+def test_budget_refuses_every_call_once_the_demo_has_ended() -> None:
+    metrics = Metrics()
+    now = [datetime(2026, 12, 15, 20, 0, tzinfo=UTC)]
+    budget = Budget(metrics, daily_usd=100, until=date(2026, 12, 15), now=lambda: now[0])
+    budget.check()
+    now[0] = datetime(2026, 12, 16, 9, 0, tzinfo=UTC)
+    with pytest.raises(BudgetExceeded, match="ended"):
+        budget.check()
 
 
 def test_hourly_limit_takes_several_at_once_or_none() -> None:

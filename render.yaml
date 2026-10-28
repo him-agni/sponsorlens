@@ -19,9 +19,12 @@ services:
       - key: LIVE_BATCHES
         value: "false"
       - key: DAILY_BUDGET_USD
-        value: "0.5"
+        value: "1"
       - key: HOURLY_REQUESTS
-        value: "30"
+        value: "60"
+      # The last live day, Pacific time; after it the demo makes no paid calls. Also the code's default.
+      - key: LIVE_UNTIL
+        value: "2026-12-15"
       # Must match the static site's URL below; a JSON list.
       - key: CORS_ORIGINS
         value: '["https://sponsorlens-web.onrender.com"]'
