@@ -14,7 +14,7 @@ The full plan, with its phase gates, lives in [build-plan.md](build-plan.md). Th
 | Repo | https://github.com/him-agni/sponsorlens (public, MIT, branch `main`) |
 | Web app | https://sponsorlens-web.onrender.com (Render static site) |
 | API | https://sponsorlens.onrender.com (Render free web service; live Nemotron since Oct 28, under the spending limits) |
-| Schedule | About one day behind the plan. Phases 0 to 4 done; Phase 5 spending limits live on Render Oct 28 |
+| Schedule | About one day behind the plan. Phases 0 to 5 done; Phase 5 spending limits live on Render Oct 28 |
 
 ## Phase status
 
@@ -25,7 +25,7 @@ The full plan, with its phase gates, lives in [build-plan.md](build-plan.md). Th
 | P2 Engine core, first deploy | Sun Oct 25 | Done Oct 27 | Rehearsal fills and drains the queues; web app reaches the API on Render ("Engine status: ok", 389 ms). Still to film: `/health` after the API wakes from sleep |
 | P3 Intake, shards, cache, log | Mon Oct 26 | Done Oct 27 | `scripts/kill_test.py`: killed mid-batch at 82/200, restarted, 82 returned from the log, 117 analysed, 1 cache hit, 0 postings finished twice |
 | P4 Web app and dashboard | Tue Oct 27 | Done Oct 28 | Checked in light, dark, desktop and 390 px phone width, live and sample mode, no console errors. Gate passed Oct 28: a new user (the owner's husband) used the deployed site on his phone and explained a verdict back unaided. His requests: a clear button and pasting a link (both built), and a wider scope (roadmap) |
-| P5 Deploy, limits, benchmark | Wed Oct 28 | In progress | Limits deployed and keys on Render Oct 28. Checked: `/health` shows `live_batches: false`, `/metrics` shows a $0.50 budget, `POST /api/batch` is 403, one live check returned Blocked with the right quote for $0.0024. Still to do: phone check over cellular, benchmark |
+| P5 Deploy, limits, benchmark | Wed Oct 28 | Done | Done Oct 28. Limits deployed and keys on Render: `/health` shows `live_batches: false`, `/metrics` shows a $0.50 budget, `POST /api/batch` is 403, a live check returned Blocked with the right quote for $0.0024. Phone check on Wi-Fi (cellular unavailable; the site is public either way). Tester fixes shipped: Start over, links, wrong-page check, no-JSON fallback. Benchmark in `docs/bench.md` |
 | P6 Video, README, submit | Thu Oct 29 | Not started | — |
 
 ## Working rules
@@ -62,6 +62,7 @@ From `backend/`:
 | `uv run python -m scripts.check_setup` | Pings both models, reads rate limits, tests JSON mode and Tavily | A few cents |
 | `uv run python -m scripts.eval` | Phase 1 gate: 15 fixtures on the real models | About $0.10 |
 | `uv run python -m scripts.rehearse` | Phase 2 gate: 200 fake jobs, live queue view | Free |
+| `uv run python -m scripts.bench` | Benchmark: workers, cache and shards on the fake model with live latencies, 3 seeds each (about 10 minutes); results in `docs/bench.md` | Free |
 | `uv run python -m scripts.kill_test` | Phase 3 gate: real Greenhouse postings, fake model, kill and resume | Free |
 | `uv run python -m scripts.record_sample --api URL` | Record the web app's sample run (4 examples, a 200-posting batch, a metrics timeline) into `web/public/sample/` | Free on the fake model; about $1 to $2 live |
 
@@ -101,6 +102,8 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `web/src/DashboardView.tsx` | Lazy-loaded. Stat tiles, shard meters, three single-series Recharts lines; SSE live, or the sample replayed |
 | `web/src/lib.ts`, `components.tsx`, `api.ts` | Status names, label styles, URL state, quote highlighting; shared UI; API types and sample loading |
 | `web/public/sample/` | The recorded live sample run (Oct 27): 4 examples with Tavily, 200 real postings, a metrics timeline compacted to every third second |
+| `backend/scripts/bench.py` | The benchmark; `LiveLikeModel` wraps FakeModel with a lognormal latency fitted to the live run |
+| `docs/bench.md` | Benchmark results and what they mean |
 | `render.yaml` | Render blueprint for both services |
 | `FEEDBACK.md` | Running feedback on Token Factory and NVIDIA tools, for the form |
 
@@ -130,7 +133,7 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 | Models | Nano `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`, Ultra `nvidia/Nemotron-3-Ultra-550b-a55b`; `json_object` mode on both | Both honour JSON mode though the catalog doesn't tag it |
 | Concurrency | `model_concurrency = 8` | Measured limits: Nano 100 RPM / 800K TPM, Ultra 300 RPM / 200K TPM |
 | Retries | GuardedModel owns them (SDK retries off); 3 tries, slot released during backoff | Token Factory had intermittent 503s on Oct 24 |
-| Shards | 4 shards; settings `workers` and `queue_capacity` are totals split across shards | Equal total workers makes the 1-shard vs 4-shard benchmark fair |
+| Shards | 4 shards; settings `workers` and `queue_capacity` are totals split across shards | Equal total workers makes the 1-shard vs 4-shard benchmark fair. Measured: 4 shards cut other companies' wait by about 20% when one company floods the engine, but are about 30% slower on an even load, because workers can't help another shard. Kept at 4 to show isolation; `SHARDS=1` where throughput matters |
 | Rehearsal gate | Passes when at least one shard fills | Jobs spread randomly; not every shard fills in every run |
 | Cache lock | `threading.Lock` per shard, critical sections never await | Correct under asyncio, and safe for the threaded stretch goal |
 | Job IDs | Batch jobs are `{batch_id}:{source}` | Makes resume idempotent |
@@ -179,6 +182,5 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 
 ## Next steps
 
-1. Phase 5: deploy the link reader and Start over button (pushed Oct 28), then check a link on the hosted site.
-2. Phase 5: phone check over cellular: a pasted posting gets a live verdict, the batch tab shows the recording. The owner deletes the temporary Render API key (`RENDER_API_KEY` in `.env` and in Render's account settings).
-3. Benchmark (`scripts/bench.py`): 1 vs 8 workers, cold vs warm cache, 1 vs 4 shards on FakeModel with latency drawn from the live measurements above, plus the live run as the real-world row. Results in `docs/bench.md`.
+1. Phase 6, Thu Oct 29: README (what it does, live link, how to run, architecture, benchmark, roadmap with the tester's wider-scope idea), video script and shot list, finish `FEEDBACK.md`, draft the Devpost fields; the owner records the video and submits.
+2. Optional, only if Phase 6 is on time: LangSmith tracing for the eval and benchmark scripts (key in `.env`; local runs only).

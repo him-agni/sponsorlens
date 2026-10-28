@@ -44,6 +44,12 @@ Running notes for the hackathon feedback form. Add to it as things come up.
 - No 429s at 8 concurrent calls, and no 5xx during this run.
 - The Builder Program credit arrived Oct 28, two days before the deadline. Everything through Phase 4 ran on the $25 promo credit, which was plenty.
 
+## Phase 5: the hosted demo (Oct 28)
+
+- A tester pasted a link whose page was mostly site clutter (funding rounds, other jobs). Nano spent its whole 8,192-token budget reasoning, three times in a row, about 30 s each, and never wrote the JSON answer. Retrying the same way just repeats the failure.
+- `chat_template_kwargs: {"enable_thinking": false}` is honored by Nano on Token Factory: the same kind of noisy page came back in 1.4 s with 43 output tokens and the right sentence. SponsorLens now keeps reasoning on for the first try and turns it off only for the retry. A per-request reasoning budget (say, "think for at most 2,000 tokens, then answer") would be better than this all-or-nothing switch.
+- A typical live check on the hosted demo costs about $0.0015 to $0.004; a $0.50 daily cap covers a few hundred checks.
+
 ## What worked well
 
 - The public model catalog JSON and the `llms.txt` docs index made it possible to plan model choice and rate limits before having a key.
