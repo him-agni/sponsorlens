@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # The append-only log, replayed on startup. On Render's free tier it is wiped when the service sleeps.
     log_path: Path = REPO_ROOT / "backend" / "data" / "sponsorlens.jsonl"
 
+    # Limits for the public demo. The budget is per UTC day and kept in memory, so a restart resets it;
+    # the hourly limit on the public endpoints bounds how fast it can be spent between restarts.
+    daily_budget_usd: float = 1.0
+    hourly_requests: int = 60
+    # Render sets this to false, so batches there show the recorded run instead of spending credits.
+    live_batches: bool = True
+
     cors_origins: list[str] = ["http://localhost:5173"]
 
 

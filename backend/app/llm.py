@@ -2,6 +2,7 @@ from typing import Protocol
 
 from openai import AsyncOpenAI
 
+from app.budget import Budget
 from app.config import settings
 from app.engine.metrics import Metrics
 
@@ -20,13 +21,23 @@ class ChatModel(Protocol):
 class TokenFactoryModel:
     # Reasoning counts against max_tokens. A long SpaceX posting took 3,066 tokens on Nano and once ran
     # past 4,096 before writing any JSON, so the cap leaves room; only tokens produced are billed.
-    def __init__(self, client: AsyncOpenAI | None = None, max_tokens: int = 8192, metrics: Metrics | None = None) -> None:
+    def __init__(
+        self,
+        client: AsyncOpenAI | None = None,
+        max_tokens: int = 8192,
+        metrics: Metrics | None = None,
+        budget: Budget | None = None,
+    ) -> None:
         # The engine's GuardedModel owns retries, so the SDK's own are off and every retry is counted.
         self.client = client or make_client(max_retries=0)
         self.max_tokens = max_tokens
         self.metrics = metrics
+        self.budget = budget
 
     async def complete(self, model: str, messages: list[dict]) -> str:
+        # The cap sits in front of every paid call, so batches, retries and single checks all stop.
+        if self.budget:
+            self.budget.check()
         # Nemotron is not tagged for JSON mode in the catalog, but both models honored it in Phase 0.
         reply = await self.client.chat.completions.create(
             model=model,
