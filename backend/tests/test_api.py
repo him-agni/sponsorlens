@@ -185,7 +185,6 @@ def test_a_batch_runs_and_reports_verdicts_for_any_status(client_for, monkeypatc
     assert view["progress"] == {"total": 6, "done": 6}
     assert view["status"] == "opt"
     assert client.get(url, params={"status": "green_card"}).json()["status"] == "green_card"
-    assert [b["id"] for b in client.get("/api/batches").json()] == [view["id"]]
 
 
 def fake_boards(monkeypatch, count: int = 12) -> None:
@@ -267,11 +266,10 @@ def test_after_the_last_day_nothing_can_spend_credits(client_for, monkeypatch) -
         client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"}),
         client.post("/api/read-link", json={"url": "https://jobs.lever.co/acme/abc"}),
         client.get("/api/company-context", params={"company": "Acme"}),
-        client.get("/api/ping-model"),
         client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme"}),
         client.post("/api/batch", json={"companies": ["stripe"]}),
     ]
-    assert [r.status_code for r in paid] == [503] * 6
+    assert [r.status_code for r in paid] == [503] * 5
     assert "ended on December 15, 2026" in paid[0].json()["detail"]
     # Free endpoints keep working, so the web app can show its recorded runs.
     assert client.get("/api/presets").status_code == 200
@@ -297,24 +295,31 @@ def test_without_a_key_the_engine_is_off_but_health_works(monkeypatch) -> None:
         assert "MODEL_BACKEND=fake" in response.json()["detail"]
 
 
-def test_rehearsal_is_refused_on_the_live_backend(client_for, monkeypatch) -> None:
-    monkeypatch.setattr(settings, "model_backend", "live")
-    client = client_for(ScriptedModel())
-    assert client.post("/api/rehearsal", json={"jobs": 5}).status_code == 409
-
-
-def test_rehearsal_shows_on_metrics(client_for, monkeypatch) -> None:
-    monkeypatch.setattr(settings, "model_backend", "fake")
-    client = client_for(FakeModel(latency=0.002, seed=1))
-    assert client.post("/api/rehearsal", json={"jobs": 40}).status_code == 202
-
-    deadline = time.monotonic() + 10
-    while time.monotonic() < deadline:
-        snapshot = client.get("/metrics").json()
-        if snapshot["counters"].get("jobs_done", 0) == 40:
-            break
-        time.sleep(0.05)
-    assert snapshot["counters"]["jobs_done"] == 40
+def test_metrics_report_the_engine(client_for) -> None:
+    client = client_for(FakeModel(latency=0, seed=1))
+    client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"})
+    snapshot = client.get("/metrics").json()
+    assert snapshot["counters"]["jobs_done"] == 1
     assert snapshot["gauges"]["queue_depth"] == 0
-    assert snapshot["gauges"]["shard0_queue_peak"] == 4
     assert snapshot["histograms"]["model_latency_ms"]["count"] > 0
+
+
+def test_oversized_requests_are_refused_unread(client_for) -> None:
+    client = client_for(FakeModel())
+    response = client.post("/api/analyze", content=b"x" * 300_000, headers={"content-type": "application/json"})
+    assert response.status_code == 413
+
+
+def test_a_failed_scan_lookup_still_counts_against_the_hour(client_for, monkeypatch) -> None:
+    """Otherwise anyone could make the server fetch Greenhouse boards without limit."""
+    fake_boards(monkeypatch)
+    monkeypatch.setattr(settings, "hourly_requests", 1)
+    client = client_for(FakeModel())
+    assert client.post("/api/scan", json={"url": "https://boards.greenhouse.io/nosuchco"}).status_code == 422
+    assert client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme"}).status_code == 429
+
+
+def test_dashboard_streams_are_capped(client_for) -> None:
+    client = client_for(FakeModel())
+    app.state.streams = main.MAX_STREAMS
+    assert client.get("/api/stream").status_code == 503

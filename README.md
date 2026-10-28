@@ -19,7 +19,7 @@ uv sync
 uv run uvicorn app.main:app --reload
 ```
 
-Check the model connection at http://localhost:8000/api/ping-model, or run the full setup check (both models, rate limits, JSON mode and Tavily):
+Check the setup (both models, rate limits, JSON mode and Tavily):
 
 ```bash
 uv run python -m scripts.check_setup
@@ -38,7 +38,7 @@ Rehearse a 200-posting batch on a fake model and watch the queue fill, hold at c
 uv run python -m scripts.rehearse
 ```
 
-To run the whole API without a key, set `MODEL_BACKEND=fake`. Then `POST /api/rehearsal` starts a fake batch and `GET /metrics` shows queue depth, busy workers, retries and latency percentiles.
+To run the whole API without a key, set `MODEL_BACKEND=fake`. `GET /metrics` shows queue depth, busy workers, retries and latency percentiles.
 
 ### Batches of real postings
 

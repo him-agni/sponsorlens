@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from urllib.parse import urlsplit
@@ -9,7 +8,7 @@ from urllib.parse import urlsplit
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from app import company_context, greenhouse, posting_link
@@ -22,10 +21,9 @@ from app.engine.fake_model import FakeModel
 from app.engine.log import JsonlLogStore
 from app.engine.metrics import Metrics
 from app.engine.queue import QueueClosed
-from app.fixtures import numbered_postings
 from app.glance import Glance, read_glance
 from app.greenhouse import PRESET_COMPANIES
-from app.llm import TokenFactoryModel, make_client
+from app.llm import TokenFactoryModel
 from app.normalize import normalize
 from app.posting_link import LinkedPosting, UnreadableLink
 from app.rules import decide
@@ -60,7 +58,7 @@ def build_engine() -> Engine | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     engine = app.state.engine = build_engine()
-    app.state.background = set()
+    app.state.streams = 0
     app.state.batches = None
     app.state.hourly = HourlyLimit(settings.hourly_requests)
     http = app.state.http = httpx.AsyncClient(timeout=30, headers={"User-Agent": "SponsorLens/0.1 (hackathon demo)"})
@@ -77,7 +75,23 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="SponsorLens", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type"]
+)
+
+# A posting is at most 50,000 characters; nothing the app sends comes close to this.
+MAX_BODY_BYTES = 256_000
+# Each open dashboard holds a connection and wakes twice a second.
+MAX_STREAMS = 20
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    """Refuse oversized requests before reading them, so one request can't exhaust memory."""
+    length = request.headers.get("content-length")
+    if length and (not length.isdigit() or int(length) > MAX_BODY_BYTES):
+        return JSONResponse({"detail": "That request is too large."}, status_code=413)
+    return await call_next(request)
 
 
 @app.get("/health")
@@ -95,34 +109,15 @@ def live_demo_open() -> None:
         )
 
 
-def within_hourly_limit(request: Request) -> None:
-    """For the public endpoints that can spend credits."""
+def charge(request: Request, count: int = 1) -> None:
+    """Count requests that can spend credits against the hourly limit, which every visitor shares."""
     hourly = getattr(request.app.state, "hourly", None)
-    if hourly and not hourly.take():
+    if hourly and not hourly.take(count):
         raise HTTPException(429, "The live demo is busy this hour. The examples still work; try again in a few minutes.")
 
 
-@app.get("/api/ping-model", dependencies=[Depends(live_demo_open), Depends(within_hourly_limit)])
-async def ping_model() -> dict:
-    """Phase 0 gate: one round trip to Nemotron on Token Factory."""
-    if not settings.nebius_api_key or not settings.nano_model:
-        raise HTTPException(503, "Set NEBIUS_API_KEY and NANO_MODEL in .env")
-
-    client = make_client()
-    start = time.perf_counter()
-    reply = await client.chat.completions.create(
-        model=settings.nano_model,
-        messages=[{"role": "user", "content": "Reply with exactly: SponsorLens is online."}],
-        max_tokens=256,
-    )
-    latency_ms = round((time.perf_counter() - start) * 1000)
-
-    return {
-        "model": reply.model,
-        "reply": reply.choices[0].message.content,
-        "latency_ms": latency_ms,
-        "usage": reply.usage.model_dump() if reply.usage else None,
-    }
+def within_hourly_limit(request: Request) -> None:
+    charge(request)
 
 
 def get_engine(request: Request) -> Engine:
@@ -236,35 +231,21 @@ async def get_company_context(
 @app.get("/api/stream")
 async def stream(request: Request, engine: Engine = Depends(get_engine)) -> StreamingResponse:
     """Server-sent events: a metrics snapshot twice a second, for the live dashboard."""
+    state = request.app.state
+    if state.streams >= MAX_STREAMS:
+        raise HTTPException(503, "Too many dashboards are open right now. Try again in a minute.")
 
     async def events():
-        while not await request.is_disconnected():
-            snapshot = {"backend": settings.model_backend, **engine.metrics.snapshot()}
-            yield f"data: {json.dumps(snapshot)}\n\n"
-            await asyncio.sleep(0.5)
+        state.streams += 1
+        try:
+            while not await request.is_disconnected():
+                snapshot = {"backend": settings.model_backend, **engine.metrics.snapshot()}
+                yield f"data: {json.dumps(snapshot)}\n\n"
+                await asyncio.sleep(0.5)
+        finally:
+            state.streams -= 1
 
     return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
-
-
-class RehearsalRequest(BaseModel):
-    jobs: int = Field(default=200, ge=1, le=2000)
-
-
-@app.post("/api/rehearsal", status_code=202)
-async def rehearsal(request: Request, body: RehearsalRequest, engine: Engine = Depends(get_engine)) -> dict:
-    """Push invented postings through the FakeModel engine, to watch backpressure on /metrics at no cost."""
-    if settings.model_backend != "fake":
-        raise HTTPException(409, "Rehearsals run only with MODEL_BACKEND=fake, so they never spend credits")
-    postings = numbered_postings(body.jobs)
-
-    async def submit_all() -> None:
-        for i, posting in enumerate(postings):
-            await engine.submit(posting, source=f"rehearsal:{i}")
-
-    task = asyncio.create_task(submit_all())
-    request.app.state.background.add(task)
-    task.add_done_callback(request.app.state.background.discard)
-    return {"jobs": body.jobs}
 
 
 def get_batches(request: Request, engine: Engine = Depends(get_engine)) -> BatchRunner:
@@ -316,8 +297,12 @@ async def scan_board(request: Request, body: ScanRequest, batches: BatchRunner =
     """Scan one company's Greenhouse board: its US jobs, only titles with the keyword if one is given.
 
     Unlike batches this stays on in the hosted demo, kept small: at most scan_limit jobs, each counted
-    against the hourly limit, and every model call still inside the daily budget.
+    against the hourly limit, and every model call still inside the daily budget. The first count is
+    taken before anything is fetched, so failed lookups can't make the server hammer Greenhouse.
     """
+    if budget_spent(batches.engine):
+        raise HTTPException(429, "The live demo has spent today's budget. It resets at midnight UTC.")
+    charge(request)
     url = body.url.strip()
     if url.startswith(("https://my.greenhouse.io", "http://my.greenhouse.io")):
         # Greenhouse's search across companies redirects to a sign-in page, so it can't be read.
@@ -349,11 +334,8 @@ async def scan_board(request: Request, body: ScanRequest, batches: BatchRunner =
         titled = f' with "{keyword}" in the title' if keyword else ""
         raise HTTPException(422, f"No US jobs{titled} on {token}'s board right now.")
     count = min(found, settings.scan_limit)
-    if budget_spent(batches.engine):
-        raise HTTPException(429, "The live demo has spent today's budget. It resets at midnight UTC.")
-    hourly = getattr(request.app.state, "hourly", None)
-    if hourly and not hourly.take(count):
-        raise HTTPException(429, "The live demo is busy this hour. Try again in a few minutes.")
+    if count > 1:
+        charge(request, count - 1)
     batch = await batches.create([token], count, body.status, keyword)
     return {"id": batch.id, "company": token, "found": found, "scanning": count}
 
@@ -365,9 +347,3 @@ async def get_batch(batch_id: str, status: Status | None = None, batches: BatchR
         raise HTTPException(404, "No batch with that ID; the free host forgets batches when it sleeps")
     return batches.view(batch, status)
 
-
-@app.get("/api/batches")
-async def list_batches(batches: BatchRunner = Depends(get_batches)) -> list[dict]:
-    """Most recent first, without the per-posting rows."""
-    ordered = sorted(batches.batches.values(), key=lambda b: b.created, reverse=True)
-    return [{k: v for k, v in batches.view(b).items() if k != "items"} for b in ordered]
