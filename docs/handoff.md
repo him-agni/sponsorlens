@@ -58,7 +58,7 @@ From `backend/`:
 | `uv sync` | Install dependencies | — |
 | `uv run uvicorn app.main:app --reload` | API on :8000 (live model if `.env` has a key) | Credits per analysis |
 | `MODEL_BACKEND=fake uv run uvicorn app.main:app` | API on the fake model | Free |
-| `uv run pytest` | 180 tests, fake model only | Free |
+| `uv run pytest` | 185 tests, fake model only | Free |
 | `uv run python -m scripts.check_setup` | Pings both models, reads rate limits, tests JSON mode and Tavily | A few cents |
 | `uv run python -m scripts.eval` | Phase 1 gate: 15 fixtures on the real models | About $0.10 |
 | `uv run python -m scripts.rehearse` | Phase 2 gate: 200 fake jobs, live queue view | Free |
@@ -80,6 +80,7 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `backend/app/rules.py` | The verdict rules table as code (`decide(analysis, status)`) |
 | `backend/app/llm.py` | `TokenFactoryModel` (AsyncOpenAI, JSON mode, temperature 0); checks the budget before every call and records token cost |
 | `backend/app/glance.py` | At a glance: location, work mode, experience, education, salary, job type from one Nano call with reasoning off; each fact kept only if its quote is in the posting and backs the answer; cached per posting |
+| `backend/app/recent.py` | `Recent`: a small least-recently-used map for the per-process caches (company context, at a glance) |
 | `backend/app/budget.py` | `Budget` (dollars per UTC day, read from `cost_micro_usd`) and `HourlyLimit` (sliding hour, all callers) |
 | `backend/app/company_context.py` | Tavily lookup for Unclear verdicts |
 | `backend/app/greenhouse.py` | Greenhouse fetch, US filter, `PRESET_COMPANIES` (20 boards); `fetch_job` and `JOB_URL` for a single pasted link |
@@ -116,7 +117,6 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | --- | --- |
 | `GET /health` | Liveness, plus `live_batches` (false on the hosted demo) |
 | `GET /metrics` | Counters, gauges (per shard too), histograms, recovery stats |
-| `GET /api/ping-model` | Phase 0 check against Nano (counts toward the hourly limit) |
 | `POST /api/analyze` `{text, status}` | Analysis, the verdict for `status`, `verdicts` for all four statuses, the normalized `text`, company context (Tavily, only when Unclear). 429 when the hourly limit or the day's budget is used up; a cached posting is still answered after the budget is spent |
 | `POST /api/read-link` `{url}` | A posting's normalized text from its link, for the paste box; 422 with a reason when the page isn't a readable posting. Counts toward the hourly limit |
 | `GET /api/company-context?company=` | Tavily context on demand, when the web app switches to a status that is Unclear. Results are kept per company. Counts toward the hourly limit |
@@ -124,9 +124,7 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `POST /api/scan` `{url, status, keyword?}` | Scan one Greenhouse board's US jobs (titles containing the keyword, if given), at most `SCAN_LIMIT` (10). Allowed even with `LIVE_BATCHES=false`; the hourly limit is charged one request per job, and it refuses up front if the day's budget is spent. Returns `{id, company, found, scanning}`; poll `/api/batch/{id}` |
 | `POST /api/batch` `{companies, per_company, status}` | Start a batch of preset Greenhouse boards (preset companies only; 1 to 25 each). 403 when `LIVE_BATCHES=false` |
 | `GET /api/batch/{id}?status=` | Progress plus a verdict per posting for any status |
-| `GET /api/batches` | Batch summaries, newest first |
 | `GET /api/presets` | The preset company list |
-| `POST /api/rehearsal` `{jobs}` | Fake-model load test (fake backend only) |
 
 Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 with a message saying what to set.
 
@@ -155,7 +153,7 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 | Tavily sources | Only sources that name the company are kept | For an invented company the search returned generic sponsor lists, which would have misled |
 | Spending | Measured, not guessed: `cost_micro_usd` counter from catalog prices | Plan for the $25 alone |
 | End date | `LIVE_UNTIL` (default 2026-12-15, the last day of judging) is the last live day in Pacific time. From Dec 16, every endpoint that can call Token Factory or Tavily answers 503, `Budget` refuses any model call (so a batch running at midnight stops too), and `/health` reports `live: false`, which the web app shows as recordings with an "ended" banner. Render stays on the free tier | The owner must not be charged after judging. Tests turn the end date off in `tests/conftest.py` so they pass on any date |
-| Spending limits | Three layers. `Budget` refuses any model call once the UTC day's spend reaches `DAILY_BUDGET_USD` (default $1; $0.50 on Render), checked inside `TokenFactoryModel` so batches, retries and single checks all stop. `HourlyLimit` caps `/api/analyze`, `/api/company-context` and `/api/ping-model` together (`HOURLY_REQUESTS`, default 60; 30 on Render). `LIVE_BATCHES=false` on Render, where the batch and engine tabs replay the recorded run | Render's free disk is wiped on sleep, so the day's count resets on every restart. A restart needs 15 idle minutes, and the hourly limit slows spending between restarts. A typical check costs about $0.0015, so $0.50 is about 300 checks a day. Worst case, someone scripting long postings through every wake could still spend more than $0.50 a day; the owner watches the balance and can remove the key on Render at any time |
+| Spending limits | Three layers. `Budget` refuses any model call once the UTC day's spend reaches `DAILY_BUDGET_USD` (default $1, also $1 on Render), checked inside `TokenFactoryModel` so batches, retries and single checks all stop. `HourlyLimit` caps `/api/analyze`, `/api/read-link`, `/api/company-context` and `/api/scan` together (`HOURLY_REQUESTS`, default 60, also 60 on Render). `LIVE_BATCHES=false` on Render, where the batch and engine tabs replay the recorded run | Render's free disk is wiped on sleep, so the day's count resets on every restart. A restart needs 15 idle minutes, and the hourly limit slows spending between restarts. A typical check costs about $0.0015, so $0.50 is about 300 checks a day. Worst case, someone scripting long postings through every wake could still spend more than $0.50 a day; the owner watches the balance and can remove the key on Render at any time |
 | Links | Greenhouse links use its Job Board API; other links go through Tavily Extract (basic depth, text format) | The server never fetches arbitrary URLs itself (no SSRF surface), and it adds a second Tavily use. Checked Oct 28: Greenhouse, Stripe's own careers page and Lever all read about 4,600 characters of clean text |
 | Wrong pages | A linked page must look like one posting (4+ posting words, under 40,000 characters) or it gets no verdict | Oct 28: a Wellfound search link read a list of other startups' jobs and got Clear, while the real job needed a Top Secret clearance. Measured: real postings had 6 to 13 of the words, a search page, a jobs list and a home page had 1 to 3. The check is a heuristic; pasted text is not checked |
 | Link reading depth | Tavily Extract `advanced` | On Wellfound, `basic` dropped the "Visa Sponsorship: Not Available" label and every bullet list. Costs twice the Tavily credits |
@@ -167,6 +165,7 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 | Board scan sources | Greenhouse only; Lever is a possible addition (public JSON feed); LinkedIn and Wellfound have no public feed and gate listings behind sign-in, so only single links from them | |
 | Start over | The reset button is called Start over, not Clear | "Clear" is also a verdict; a test caught the clash |
 | Scope | Work authorization only; broader checks (remote or location limits, degree requirements) go in the README as the roadmap | Suggested by the Phase 4 tester; too big for the days left, and a narrow tool that quotes its evidence is easier to trust |
+| Security and privacy review (Oct 28) | A single check is never written to disk (only batch jobs are logged, for recovery), and a job drops its text once answered; the engine's table of every job ever submitted is gone. Removed `/api/ping-model` (spent credits, unused), `/api/rehearsal` (unused; `scripts.rehearse` covers it) and `/api/batches` (listed every visitor's scans). `/api/scan` charges the hourly limit before fetching anything; request bodies over 256 KB get 413 unread; at most 20 dashboard streams; caches and the batch list are bounded; CORS is GET and POST with Content-Type only; links from data render only if http or https; server logs name a site, never a pasted link. `npm audit` and `pip-audit` found nothing; no keys or personal email anywhere in git history | Requested by the owner before submission. Known and accepted: the hourly limit is shared by all visitors (one person can use it up; per-visitor limits would need a trusted client IP), and the daily budget resets when the free server restarts |
 | Colors | Data-viz reference palette: status colors good, warning and critical for Clear, Unclear and Blocked, always with an icon and label; one blue for series | Colorblind-safe and consistent in light and dark |
 
 ## Live measurements (Oct 27, 200 real Greenhouse postings, 20 companies)
