@@ -13,8 +13,8 @@ The full plan, with its phase gates, lives in [build-plan.md](build-plan.md). Th
 | Deadline | **Fri Oct 30, 2026, 10:00am PDT.** Plan: submit Thu Oct 29 evening |
 | Repo | https://github.com/him-agni/sponsorlens (public, MIT, branch `main`) |
 | Web app | https://sponsorlens-web.onrender.com (Render static site) |
-| API | https://sponsorlens.onrender.com (Render free web service; `/health` works) |
-| Schedule | About one day behind the plan. Phases 0 to 3 done; Phase 4 built, its gate (a new user reads a verdict unaided) still to run; Phase 5 spending limits built Oct 28, not yet deployed |
+| API | https://sponsorlens.onrender.com (Render free web service; live Nemotron since Oct 28, under the spending limits) |
+| Schedule | About one day behind the plan. Phases 0 to 4 done; Phase 5 spending limits live on Render Oct 28 |
 
 ## Phase status
 
@@ -24,8 +24,8 @@ The full plan, with its phase gates, lives in [build-plan.md](build-plan.md). Th
 | P1 Verdict for one posting | Sat Oct 24 | Done | Eval 15/15 for all four statuses, 0 unverified quotes (prompt `p1`) |
 | P2 Engine core, first deploy | Sun Oct 25 | Done Oct 27 | Rehearsal fills and drains the queues; web app reaches the API on Render ("Engine status: ok", 389 ms). Still to film: `/health` after the API wakes from sleep |
 | P3 Intake, shards, cache, log | Mon Oct 26 | Done Oct 27 | `scripts/kill_test.py`: killed mid-batch at 82/200, restarted, 82 returned from the log, 117 analysed, 1 cache hit, 0 postings finished twice |
-| P4 Web app and dashboard | Tue Oct 27 | Built Oct 27 | Checked in light, dark, desktop and 390 px phone width, live and sample mode, no console errors. Live sample recorded and committed. Still to do: the owner's husband checks the deployed site remotely and explains a verdict back unaided |
-| P5 Deploy, limits, benchmark | Wed Oct 28 | In progress | Spending limits built and tested locally (hosted mode checked in the browser on the fake model). Still to do: deploy, keys on Render, phone check over cellular, benchmark |
+| P4 Web app and dashboard | Tue Oct 27 | Done Oct 28 | Checked in light, dark, desktop and 390 px phone width, live and sample mode, no console errors. Gate passed Oct 28: a new user (the owner's husband) used the deployed site on his phone and explained a verdict back unaided. His requests: a clear button and pasting a link (both built), and a wider scope (roadmap) |
+| P5 Deploy, limits, benchmark | Wed Oct 28 | In progress | Limits deployed and keys on Render Oct 28. Checked: `/health` shows `live_batches: false`, `/metrics` shows a $0.50 budget, `POST /api/batch` is 403, one live check returned Blocked with the right quote for $0.0024. Still to do: phone check over cellular, benchmark |
 | P6 Video, README, submit | Thu Oct 29 | Not started | — |
 
 ## Working rules
@@ -47,7 +47,7 @@ These come from the owner and apply to every change.
 | LangSmith | `LANGSMITH_API_KEY` in `.env` (Oct 28). $100 Builder Program credit, Personal org, spend limit $10 a month, base 14-day retention. Planned for tracing local eval and benchmark runs only, never the hosted demo, because traces would carry pasted posting text |
 | Toloka, Tandem | $50 each offered by the Builder Program; not used this week (human labeling is too slow for the deadline) |
 | Render | Free tier, no card. Services: `sponsorlens` (API, created by hand because the blueprint's `sponsorlens-api` step failed) and `sponsorlens-web` (static site) |
-| Render env vars | API: `CORS_ORIGINS=["https://sponsorlens-web.onrender.com"]`; to add with the keys: `LIVE_BATCHES=false`, `DAILY_BUDGET_USD=0.5`, `HOURLY_REQUESTS=30` (the service was made by hand, so `render.yaml` is not applied to it). Web: `VITE_API_URL=https://sponsorlens.onrender.com`. Vite bakes `VITE_API_URL` in at build time, so changing it needs a web redeploy |
+| Render env vars | API: `CORS_ORIGINS=["https://sponsorlens-web.onrender.com"]`, `NEBIUS_API_KEY`, `TAVILY_API_KEY`, `LIVE_BATCHES=false`, `DAILY_BUDGET_USD=0.5`, `HOURLY_REQUESTS=30` (set Oct 28 through the Render API; the service was made by hand, so `render.yaml` is not applied to it). A stray `VITE_API_URL` on the API service is harmless. Web: `VITE_API_URL=https://sponsorlens.onrender.com`. Vite bakes `VITE_API_URL` in at build time, so changing it needs a web redeploy |
 
 ## Run it locally
 
@@ -58,7 +58,7 @@ From `backend/`:
 | `uv sync` | Install dependencies | — |
 | `uv run uvicorn app.main:app --reload` | API on :8000 (live model if `.env` has a key) | Credits per analysis |
 | `MODEL_BACKEND=fake uv run uvicorn app.main:app` | API on the fake model | Free |
-| `uv run pytest` | 152 tests, fake model only | Free |
+| `uv run pytest` | 158 tests, fake model only | Free |
 | `uv run python -m scripts.check_setup` | Pings both models, reads rate limits, tests JSON mode and Tavily | A few cents |
 | `uv run python -m scripts.eval` | Phase 1 gate: 15 fixtures on the real models | About $0.10 |
 | `uv run python -m scripts.rehearse` | Phase 2 gate: 200 fake jobs, live queue view | Free |
@@ -80,7 +80,8 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `backend/app/llm.py` | `TokenFactoryModel` (AsyncOpenAI, JSON mode, temperature 0); checks the budget before every call and records token cost |
 | `backend/app/budget.py` | `Budget` (dollars per UTC day, read from `cost_micro_usd`) and `HourlyLimit` (sliding hour, all callers) |
 | `backend/app/company_context.py` | Tavily lookup for Unclear verdicts |
-| `backend/app/greenhouse.py` | Greenhouse fetch, US filter, `PRESET_COMPANIES` (20 boards) |
+| `backend/app/greenhouse.py` | Greenhouse fetch, US filter, `PRESET_COMPANIES` (20 boards); `fetch_job` and `JOB_URL` for a single pasted link |
+| `backend/app/posting_link.py` | Reads a posting from a link: Greenhouse through its API, anything else through Tavily Extract; refuses pages under 300 characters (sign-in walls) |
 | `backend/app/batches.py` | `BatchRunner`: one fetcher per company, resume from the log, `view()` |
 | `backend/app/fixtures.py` | 15 invented postings (`backend/fixtures/postings.json`), `numbered_postings` |
 | `backend/app/engine/queue.py` | Hand-written `BoundedQueue` on two `asyncio.Condition`s |
@@ -95,7 +96,7 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `backend/scripts/record_sample.py` | Records the sample run the web app shows when the engine is asleep or off |
 | `web/src/App.tsx` | Shell: header, status picker and tabs (all kept in the URL: `?view=&status=&batch=&verdict=`), banner, footer |
 | `web/src/engine.ts` | `useEngine`: probes `/health` then `/metrics`; `live`, `waking` (slow health), `no-engine` (503, no key) or `offline`, plus `liveBatches` from `/health` |
-| `web/src/CheckView.tsx` | Paste box, examples, verdict card, per-status switch, Tavily panel, posting text with quotes marked |
+| `web/src/CheckView.tsx` | Paste box (text or a link, read into the box first), Start over button, examples, verdict card, per-status switch, Tavily panel, posting text with quotes marked |
 | `web/src/BatchView.tsx` | Start a batch from the presets, poll it, filter by verdict, 50 rows at a time |
 | `web/src/DashboardView.tsx` | Lazy-loaded. Stat tiles, shard meters, three single-series Recharts lines; SSE live, or the sample replayed |
 | `web/src/lib.ts`, `components.tsx`, `api.ts` | Status names, label styles, URL state, quote highlighting; shared UI; API types and sample loading |
@@ -111,6 +112,7 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `GET /metrics` | Counters, gauges (per shard too), histograms, recovery stats |
 | `GET /api/ping-model` | Phase 0 check against Nano (counts toward the hourly limit) |
 | `POST /api/analyze` `{text, status}` | Analysis, the verdict for `status`, `verdicts` for all four statuses, the normalized `text`, company context (Tavily, only when Unclear). 429 when the hourly limit or the day's budget is used up; a cached posting is still answered after the budget is spent |
+| `POST /api/read-link` `{url}` | A posting's normalized text from its link, for the paste box; 422 with a reason when the page isn't a readable posting. Counts toward the hourly limit |
 | `GET /api/company-context?company=` | Tavily context on demand, when the web app switches to a status that is Unclear. Results are kept per company. Counts toward the hourly limit |
 | `GET /api/stream` | Server-sent events: a metrics snapshot twice a second |
 | `POST /api/batch` `{companies, per_company, status}` | Start a batch of preset Greenhouse boards (preset companies only; 1 to 25 each). 403 when `LIVE_BATCHES=false` |
@@ -119,7 +121,7 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `GET /api/presets` | The preset company list |
 | `POST /api/rehearsal` `{jobs}` | Fake-model load test (fake backend only) |
 
-Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 with a message saying what to set. That is the hosted API's state today.
+Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 with a message saying what to set.
 
 ## Decisions and deviations from the plan
 
@@ -146,6 +148,9 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 | Tavily sources | Only sources that name the company are kept | For an invented company the search returned generic sponsor lists, which would have misled |
 | Spending | Measured, not guessed: `cost_micro_usd` counter from catalog prices | Plan for the $25 alone |
 | Spending limits | Three layers. `Budget` refuses any model call once the UTC day's spend reaches `DAILY_BUDGET_USD` (default $1; $0.50 on Render), checked inside `TokenFactoryModel` so batches, retries and single checks all stop. `HourlyLimit` caps `/api/analyze`, `/api/company-context` and `/api/ping-model` together (`HOURLY_REQUESTS`, default 60; 30 on Render). `LIVE_BATCHES=false` on Render, where the batch and engine tabs replay the recorded run | Render's free disk is wiped on sleep, so the day's count resets on every restart. A restart needs 15 idle minutes, and the hourly limit slows spending between restarts. A typical check costs about $0.0015, so $0.50 is about 300 checks a day. Worst case, someone scripting long postings through every wake could still spend more than $0.50 a day; the owner watches the balance and can remove the key on Render at any time |
+| Links | Greenhouse links use its Job Board API; other links go through Tavily Extract (basic depth, text format) | The server never fetches arbitrary URLs itself (no SSRF surface), and it adds a second Tavily use. Checked Oct 28: Greenhouse, Stripe's own careers page and Lever all read about 4,600 characters of clean text |
+| Start over | The reset button is called Start over, not Clear | "Clear" is also a verdict; a test caught the clash |
+| Scope | Work authorization only; broader checks (remote or location limits, degree requirements) go in the README as the roadmap | Suggested by the Phase 4 tester; too big for the days left, and a narrow tool that quotes its evidence is easier to trust |
 | Colors | Data-viz reference palette: status colors good, warning and critical for Clear, Unclear and Blocked, always with an icon and label; one blue for series | Colorblind-safe and consistent in light and dark |
 
 ## Live measurements (Oct 27, 200 real Greenhouse postings, 20 companies)
@@ -162,6 +167,7 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 ## Open items and owner actions
 
 - [x] Tavily key in `.env` (free plan)
+- [ ] Delete the temporary Render API key (Render account settings) and its line in `.env`
 - [x] Builder Program credits claimed Oct 28: Nebius $25, Tavily $25, LangSmith $100 (key in `.env`)
 - [ ] Film the gate clips for the video: eval, rehearse, kill_test, and the web app waking from sleep
 - [ ] Phase 5: ask on the Nebius Discord whether a usage cap and a sleeping demo are acceptable
@@ -169,6 +175,6 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 
 ## Next steps
 
-1. Phase 4 gate: the owner's husband checks the deployed site from his phone and explains a verdict back (message and pass criteria were given to the owner).
-2. Phase 5: push the spending limits, wait for Render to deploy, then add `NEBIUS_API_KEY`, `TAVILY_API_KEY`, `LIVE_BATCHES=false`, `DAILY_BUDGET_USD=0.5` and `HOURLY_REQUESTS=30` to the `sponsorlens` service (keys only after the limits are live). Then a phone check over cellular: a pasted posting gets a live verdict, the batch tab shows the recording.
+1. Phase 5: deploy the link reader and Start over button (pushed Oct 28), then check a link on the hosted site.
+2. Phase 5: phone check over cellular: a pasted posting gets a live verdict, the batch tab shows the recording. The owner deletes the temporary Render API key (`RENDER_API_KEY` in `.env` and in Render's account settings).
 3. Benchmark (`scripts/bench.py`): 1 vs 8 workers, cold vs warm cache, 1 vs 4 shards on FakeModel with latency drawn from the live measurements above, plus the live run as the real-world row. Results in `docs/bench.md`.
