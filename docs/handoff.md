@@ -58,7 +58,7 @@ From `backend/`:
 | `uv sync` | Install dependencies | — |
 | `uv run uvicorn app.main:app --reload` | API on :8000 (live model if `.env` has a key) | Credits per analysis |
 | `MODEL_BACKEND=fake uv run uvicorn app.main:app` | API on the fake model | Free |
-| `uv run pytest` | 158 tests, fake model only | Free |
+| `uv run pytest` | 165 tests, fake model only | Free |
 | `uv run python -m scripts.check_setup` | Pings both models, reads rate limits, tests JSON mode and Tavily | A few cents |
 | `uv run python -m scripts.eval` | Phase 1 gate: 15 fixtures on the real models | About $0.10 |
 | `uv run python -m scripts.rehearse` | Phase 2 gate: 200 fake jobs, live queue view | Free |
@@ -75,13 +75,13 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `backend/app/config.py` | Settings from env and `.env`; blank values keep defaults |
 | `backend/app/schemas.py` | `Status`, `SignalType`, `Label`, `Signal`, `Analysis`, `Verdict` |
 | `backend/app/normalize.py` | HTML to text keeping line breaks; `quote_in_text` for quote checks |
-| `backend/app/analyzer.py` | Nemotron cascade: Nano finds sentences, Ultra classifies; quotes verified; one retry. `PROMPT_VERSION = "p1"` |
+| `backend/app/analyzer.py` | Nemotron cascade: Nano finds sentences, Ultra classifies; quotes verified; a reply with no JSON is retried with reasoning off; repeated quotes merged. `PROMPT_VERSION = "p1"` |
 | `backend/app/rules.py` | The verdict rules table as code (`decide(analysis, status)`) |
 | `backend/app/llm.py` | `TokenFactoryModel` (AsyncOpenAI, JSON mode, temperature 0); checks the budget before every call and records token cost |
 | `backend/app/budget.py` | `Budget` (dollars per UTC day, read from `cost_micro_usd`) and `HourlyLimit` (sliding hour, all callers) |
 | `backend/app/company_context.py` | Tavily lookup for Unclear verdicts |
 | `backend/app/greenhouse.py` | Greenhouse fetch, US filter, `PRESET_COMPANIES` (20 boards); `fetch_job` and `JOB_URL` for a single pasted link |
-| `backend/app/posting_link.py` | Reads a posting from a link: Greenhouse through its API, anything else through Tavily Extract; refuses pages under 300 characters (sign-in walls) |
+| `backend/app/posting_link.py` | Reads a posting from a link: Greenhouse through its API, anything else through Tavily Extract (advanced). Rewrites search-page links (Wellfound `job_listing_slug`, LinkedIn `currentJobId`) to the job's own page. Refuses sign-in walls (under 300 characters) and anything that doesn't look like one posting (over 40,000 characters, or fewer than 4 of 17 posting words) |
 | `backend/app/batches.py` | `BatchRunner`: one fetcher per company, resume from the log, `view()` |
 | `backend/app/fixtures.py` | 15 invented postings (`backend/fixtures/postings.json`), `numbered_postings` |
 | `backend/app/engine/queue.py` | Hand-written `BoundedQueue` on two `asyncio.Condition`s |
@@ -149,6 +149,10 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 | Spending | Measured, not guessed: `cost_micro_usd` counter from catalog prices | Plan for the $25 alone |
 | Spending limits | Three layers. `Budget` refuses any model call once the UTC day's spend reaches `DAILY_BUDGET_USD` (default $1; $0.50 on Render), checked inside `TokenFactoryModel` so batches, retries and single checks all stop. `HourlyLimit` caps `/api/analyze`, `/api/company-context` and `/api/ping-model` together (`HOURLY_REQUESTS`, default 60; 30 on Render). `LIVE_BATCHES=false` on Render, where the batch and engine tabs replay the recorded run | Render's free disk is wiped on sleep, so the day's count resets on every restart. A restart needs 15 idle minutes, and the hourly limit slows spending between restarts. A typical check costs about $0.0015, so $0.50 is about 300 checks a day. Worst case, someone scripting long postings through every wake could still spend more than $0.50 a day; the owner watches the balance and can remove the key on Render at any time |
 | Links | Greenhouse links use its Job Board API; other links go through Tavily Extract (basic depth, text format) | The server never fetches arbitrary URLs itself (no SSRF surface), and it adds a second Tavily use. Checked Oct 28: Greenhouse, Stripe's own careers page and Lever all read about 4,600 characters of clean text |
+| Wrong pages | A linked page must look like one posting (4+ posting words, under 40,000 characters) or it gets no verdict | Oct 28: a Wellfound search link read a list of other startups' jobs and got Clear, while the real job needed a Top Secret clearance. Measured: real postings had 6 to 13 of the words, a search page, a jobs list and a home page had 1 to 3. The check is a heuristic; pasted text is not checked |
+| Link reading depth | Tavily Extract `advanced` | On Wellfound, `basic` dropped the "Visa Sponsorship: Not Available" label and every bullet list. Costs twice the Tavily credits |
+| No-JSON fallback | A reply with no JSON is asked again with reasoning off (`chat_template_kwargs.enable_thinking=false`), not repeated | Oct 28 on the hosted demo: a noisy page made Nano use all 8,192 tokens reasoning three times (about 90 s) and fail. Without reasoning Nano answered in 1.4 s with the right sentence. Reasoning stays on for the first try because it reads more carefully |
+| Error messages | People see what to do ("paste just the job description", "try again in a minute"); the raw error goes to the server log | The raw "ValueError: no JSON object in reply" meant nothing to a tester |
 | Start over | The reset button is called Start over, not Clear | "Clear" is also a verdict; a test caught the clash |
 | Scope | Work authorization only; broader checks (remote or location limits, degree requirements) go in the README as the roadmap | Suggested by the Phase 4 tester; too big for the days left, and a narrow tool that quotes its evidence is easier to trust |
 | Colors | Data-viz reference palette: status colors good, warning and critical for Clear, Unclear and Blocked, always with an icon and label; one blue for series | Colorblind-safe and consistent in light and dark |
@@ -167,7 +171,7 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 ## Open items and owner actions
 
 - [x] Tavily key in `.env` (free plan)
-- [ ] Delete the temporary Render API key (Render account settings) and its line in `.env`
+- [x] Temporary Render API key deleted Oct 28 (Render and `.env`)
 - [x] Builder Program credits claimed Oct 28: Nebius $25, Tavily $25, LangSmith $100 (key in `.env`)
 - [ ] Film the gate clips for the video: eval, rehearse, kill_test, and the web app waking from sleep
 - [ ] Phase 5: ask on the Nebius Discord whether a usage cap and a sleeping demo are acceptable
