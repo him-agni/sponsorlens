@@ -52,7 +52,7 @@ class FakeModel:
         self.peak_in_flight = 0
         self._rng = random.Random(seed)
 
-    async def complete(self, model: str, messages: list[dict]) -> str:
+    async def complete(self, model: str, messages: list[dict], think: bool = True) -> str:
         self.calls += 1
         self.in_flight += 1
         self.peak_in_flight = max(self.peak_in_flight, self.in_flight)

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import time
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -27,6 +28,8 @@ from app.normalize import normalize
 from app.posting_link import LinkedPosting, UnreadableLink
 from app.rules import decide
 from app.schemas import Analysis, Label, Status, Verdict
+
+log = logging.getLogger(__name__)
 
 
 def build_engine() -> Engine | None:
@@ -158,7 +161,15 @@ async def analyze(
             raise HTTPException(
                 429, "The live demo has spent today's budget. The examples still work, and it resets at midnight UTC."
             )
-        raise HTTPException(502, f"The model call failed: {error}")
+        # The raw error goes to the log; people see what they can do about it.
+        log.warning("Analysis failed: %s", error)
+        if str(error).startswith(("ValueError", "ValidationError")):
+            raise HTTPException(
+                502,
+                "The model couldn't finish reading this posting. Try again, or paste just the job description "
+                "without the rest of the page.",
+            )
+        raise HTTPException(502, "The model service didn't answer. Try again in a minute.")
     verdicts = {status: decide(analysis, status) for status in Status}
     verdict = verdicts[request.status]
     context = None

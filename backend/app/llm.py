@@ -15,7 +15,7 @@ def make_client(max_retries: int = 2) -> AsyncOpenAI:
 class ChatModel(Protocol):
     """The one call the analyzer needs, so tests and the engine can swap in a fake."""
 
-    async def complete(self, model: str, messages: list[dict]) -> str: ...
+    async def complete(self, model: str, messages: list[dict], think: bool = True) -> str: ...
 
 
 class TokenFactoryModel:
@@ -34,7 +34,7 @@ class TokenFactoryModel:
         self.metrics = metrics
         self.budget = budget
 
-    async def complete(self, model: str, messages: list[dict]) -> str:
+    async def complete(self, model: str, messages: list[dict], think: bool = True) -> str:
         # The cap sits in front of every paid call, so batches, retries and single checks all stop.
         if self.budget:
             self.budget.check()
@@ -45,7 +45,11 @@ class TokenFactoryModel:
             temperature=0,
             max_tokens=self.max_tokens,
             response_format={"type": "json_object"},
+            # Without reasoning Nemotron answers in seconds but reads less carefully, so it is the fallback.
+            extra_body=None if think else {"chat_template_kwargs": {"enable_thinking": False}},
         )
+        if self.metrics and not think:
+            self.metrics.inc("calls_without_reasoning")
         if self.metrics and reply.usage:
             self.record_usage(model, reply.usage.prompt_tokens, reply.usage.completion_tokens)
         return reply.choices[0].message.content or ""

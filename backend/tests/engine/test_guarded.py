@@ -22,7 +22,7 @@ class FlakyModel:
         self.errors = list(errors)
         self.calls = 0
 
-    async def complete(self, model: str, messages: list[dict]) -> str:
+    async def complete(self, model: str, messages: list[dict], think: bool = True) -> str:
         self.calls += 1
         if self.errors:
             raise self.errors.pop(0)
@@ -93,7 +93,7 @@ async def test_concurrency_cap_holds() -> None:
     peak = in_flight = 0
 
     class SlowModel:
-        async def complete(self, model: str, messages: list[dict]) -> str:
+        async def complete(self, model: str, messages: list[dict], think: bool = True) -> str:
             nonlocal peak, in_flight
             in_flight += 1
             peak = max(peak, in_flight)

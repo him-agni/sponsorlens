@@ -109,16 +109,17 @@ class Analyzer:
         if missing:
             classified = await self._ask(self.ultra_model, _with_correction(messages, classified, missing), _Classified)
             missing = [s.quote for s in _relevant(classified) if not quote_in_text(s.quote, text)]
-        signals = [
-            Signal(type=s.type, quote=s.quote, reading=s.reading)
-            for s in _relevant(classified)
-            if quote_in_text(s.quote, text)
-        ]
-        return signals, len(missing)
+        signals: dict[tuple[str, str], Signal] = {}
+        for s in _relevant(classified):
+            # A posting that repeats a line gives the same signal twice; the verdict shows it once.
+            if quote_in_text(s.quote, text) and (s.type, s.quote.casefold()) not in signals:
+                signals[s.type, s.quote.casefold()] = Signal(type=s.type, quote=s.quote, reading=s.reading)
+        return list(signals.values()), len(missing)
 
     async def _ask[T: BaseModel](self, model: str, messages: list[dict], schema: type[T]) -> T:
-        """Retry an unusable reply up to twice. A reply with no JSON at all usually means the reasoning
-        used up the token budget, so it is asked again as it was; a malformed one is shown its error."""
+        """Retry an unusable reply up to twice. A reply with no JSON at all means the reasoning used up
+        the token budget; repeating the call usually fails the same slow way, so it is asked again with
+        reasoning off, which answers in seconds. A malformed reply is shown its error."""
         reply = await self.model.complete(model, messages)
         for retries_left in (2, 1, 0):
             try:
@@ -126,12 +127,13 @@ class Analyzer:
             except (ValueError, ValidationError) as error:
                 if not retries_left:
                     raise
-                retry = messages
-                if "{" in reply:
-                    retry = messages + [
-                        {"role": "assistant", "content": reply},
-                        {"role": "user", "content": f"That reply was not valid ({error}). Reply with the JSON only."},
-                    ]
+                if "{" not in reply:
+                    reply = await self.model.complete(model, messages, think=False)
+                    continue
+                retry = messages + [
+                    {"role": "assistant", "content": reply},
+                    {"role": "user", "content": f"That reply was not valid ({error}). Reply with the JSON only."},
+                ]
                 reply = await self.model.complete(model, retry)
         raise AssertionError("unreachable")
 

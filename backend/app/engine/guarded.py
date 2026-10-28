@@ -50,7 +50,7 @@ class GuardedModel:
         metrics.gauge("model_in_flight", lambda: self.in_flight)
         metrics.gauge("model_concurrency", lambda: self.concurrency)
 
-    async def complete(self, model: str, messages: list[dict]) -> str:
+    async def complete(self, model: str, messages: list[dict], think: bool = True) -> str:
         for attempt in range(self.attempts):
             # The slot is held only during the call, never during the backoff sleep.
             async with self._slots:
@@ -58,7 +58,7 @@ class GuardedModel:
                 self.metrics.inc("model_calls")
                 start = time.perf_counter()
                 try:
-                    return await self.inner.complete(model, messages)
+                    return await self.inner.complete(model, messages, think)
                 except Exception as error:
                     self.metrics.inc("model_errors")
                     if getattr(error, "status_code", None) == 429:

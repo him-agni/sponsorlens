@@ -18,9 +18,11 @@ class ScriptedModel:
     def __init__(self, *replies: object) -> None:
         self.replies = [r if isinstance(r, str) else json.dumps(r) for r in replies]
         self.calls: list[tuple[str, list[dict]]] = []
+        self.thinking: list[bool] = []
 
-    async def complete(self, model: str, messages: list[dict]) -> str:
+    async def complete(self, model: str, messages: list[dict], think: bool = True) -> str:
         self.calls.append((model, messages))
+        self.thinking.append(think)
         return self.replies.pop(0)
 
 
@@ -66,12 +68,19 @@ async def test_malformed_json_is_retried_with_its_error() -> None:
     assert "not valid" in model.calls[1][1][-1]["content"]
 
 
-async def test_an_empty_reply_is_asked_again_as_it_was() -> None:
+async def test_an_empty_reply_is_asked_again_without_reasoning() -> None:
     """An empty reply means the reasoning used up the token budget; showing it back would not help."""
-    model = ScriptedModel("", "", {"company": "Acme", "sentences": []})
+    model = ScriptedModel("", {"company": "Acme", "sentences": []})
     analysis = await analyzer(model).analyze("Some posting.")
     assert analysis.company == "Acme"
-    assert model.calls[1][1] == model.calls[0][1] == model.calls[2][1]
+    assert model.calls[1][1] == model.calls[0][1]
+    assert model.thinking == [True, False]
+
+
+async def test_a_malformed_reply_keeps_reasoning_on() -> None:
+    model = ScriptedModel('{"company": "Acme", "sentences": [', {"company": "Acme", "sentences": []})
+    await analyzer(model).analyze("Some posting.")
+    assert model.thinking == [True, True]
 
 
 async def test_three_unusable_replies_fail_the_job() -> None:
@@ -109,3 +118,17 @@ async def test_not_relevant_signals_are_dropped() -> None:
     analysis = await analyzer(model).analyze(POSTING)
     assert analysis.signals == []
     assert analysis.unverified_quotes == 0
+
+
+async def test_a_repeated_line_is_one_signal() -> None:
+    model = ScriptedModel(
+        {"company": "Acme", "sentences": ["We participate in E-Verify."]},
+        {
+            "signals": [
+                {"type": "e_verify", "quote": "We participate in E-Verify", "reading": "r"},
+                {"type": "e_verify", "quote": "we participate in e-verify", "reading": "r"},
+            ]
+        },
+    )
+    analysis = await analyzer(model).analyze(POSTING)
+    assert [s.quote for s in analysis.signals] == ["We participate in E-Verify"]

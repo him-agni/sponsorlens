@@ -83,11 +83,18 @@ def test_failed_model_call_is_a_502(client_for) -> None:
     client = client_for(FakeModel(latency=0, failure_rate=1.0))
     response = client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"})
     assert response.status_code == 502
-    assert "FakeAPIError" in response.json()["detail"]
+    assert "didn't answer" in response.json()["detail"]
+
+
+def test_an_unreadable_reply_asks_for_just_the_job_description(client_for) -> None:
+    client = client_for(ScriptedModel("", "", ""))
+    response = client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "ead"})
+    assert response.status_code == 502
+    assert "paste just the job description" in response.json()["detail"]
 
 
 class SpentModel:
-    async def complete(self, model: str, messages: list[dict]) -> str:
+    async def complete(self, model: str, messages: list[dict], think: bool = True) -> str:
         raise BudgetExceeded("today's $1.00 demo budget is spent")
 
 
