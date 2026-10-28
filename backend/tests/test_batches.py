@@ -1,6 +1,7 @@
 import asyncio
 from collections import Counter
 
+from app import batches
 from app.batches import BatchRunner
 from app.engine.engine import Engine
 from app.engine.fake_model import FakeModel
@@ -126,3 +127,17 @@ async def test_a_finished_batch_is_not_resumed() -> None:
     [batch] = runner.batches.values()
     assert runner.view(batch)["progress"] == {"total": 5, "done": 5}
     await e.shutdown()
+
+
+async def test_only_the_newest_batches_are_kept(monkeypatch) -> None:
+    monkeypatch.setattr(batches, "MAX_BATCHES", 2)
+    e = engine(MemoryLogStore())
+    await e.start()
+    runner = BatchRunner(e, fetch)
+    ids = []
+    for _ in range(3):
+        batch = await runner.create(["acme"], 1, Status.OPT)
+        await asyncio.wait_for(runner.wait(batch.id), timeout=10)
+        ids.append(batch.id)
+    await e.shutdown()
+    assert list(runner.batches) == ids[1:]

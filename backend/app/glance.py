@@ -6,7 +6,6 @@ call beside the verdict, never changes the verdict, and a failure here only hide
 
 import logging
 import re
-from collections import OrderedDict
 from enum import StrEnum
 
 from pydantic import BaseModel, ValidationError
@@ -15,6 +14,7 @@ from app.analyzer import _parse_json
 from app.engine.cache import content_hash
 from app.llm import ChatModel
 from app.normalize import normalize, quote_in_text
+from app.recent import Recent
 
 log = logging.getLogger(__name__)
 
@@ -56,16 +56,14 @@ quote is copied word for word from the posting, and must contain the fact.
 Include a kind only if the posting states it, and at most one fact per kind. Never guess."""
 
 # Kept for the life of the process, like the verdict cache, so a repeated posting costs nothing.
-_seen: OrderedDict[str, Glance] = OrderedDict()
-_CAPACITY = 1024
+_seen: Recent[str, Glance] = Recent()
 
 
 async def read_glance(model: ChatModel, nano_model: str, text: str) -> Glance | None:
     normalized = normalize(text)
     key = content_hash(normalized)
     if key in _seen:
-        _seen.move_to_end(key)
-        return _seen[key]
+        return _seen.get(key)
     messages = [{"role": "system", "content": GLANCE_PROMPT}, {"role": "user", "content": normalized}]
     try:
         # Reasoning off: these facts are stated plainly, and the card should not slow the verdict.
@@ -86,9 +84,7 @@ async def read_glance(model: ChatModel, nano_model: str, text: str) -> Glance | 
         if fact.kind not in facts and not repeated and quote_in_text(fact.quote, normalized) and supports(fact.quote, fact.value):
             facts[fact.kind] = fact
     glance = Glance(facts=list(facts.values()))
-    _seen[key] = glance
-    if len(_seen) > _CAPACITY:
-        _seen.popitem(last=False)
+    _seen.put(key, glance)
     return glance
 
 

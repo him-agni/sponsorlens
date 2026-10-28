@@ -66,3 +66,8 @@ async def test_a_company_site_is_matched_only_to_a_board_with_its_name() -> None
         assert await find_board(client, "https://job-boards.greenhouse.io/Stripe") == "stripe"
         assert await find_board(client, "https://acme.com/careers") is None
         assert await find_board(client, "https://notion.so/careers") is None
+
+
+def test_only_a_plain_site_name_becomes_a_board_token() -> None:
+    assert site_token("https://acme-robotics.com/careers") == "acme-robotics"
+    assert site_token("https://a_b.com/careers") is None

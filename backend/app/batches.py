@@ -23,6 +23,8 @@ from app.rules import decide
 from app.schemas import Status
 
 Fetch = Callable[[str], Awaitable[list[Posting]]]
+# A public server keeps at most this many batches in memory, forgetting the oldest finished ones.
+MAX_BATCHES = 200
 
 
 @dataclass
@@ -74,6 +76,7 @@ class BatchRunner:
             }
         )
         self.batches[batch.id] = batch
+        self._forget_oldest()
         self._launch(batch)
         return batch
 
@@ -113,6 +116,13 @@ class BatchRunner:
         for task in self._tasks.values():
             task.cancel()
         await asyncio.gather(*self._tasks.values(), return_exceptions=True)
+
+    def _forget_oldest(self) -> None:
+        extra = len(self.batches) - MAX_BATCHES
+        finished = sorted((b for b in self.batches.values() if b.finished), key=lambda b: b.created)
+        for batch in finished[: max(0, extra)]:
+            del self.batches[batch.id]
+            self._tasks.pop(batch.id, None)
 
     def _launch(self, batch: Batch) -> None:
         self._tasks[batch.id] = asyncio.create_task(self._run(batch), name=f"batch-{batch.id}")

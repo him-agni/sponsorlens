@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from tavily import AsyncTavilyClient
 
 from app.config import settings
+from app.recent import Recent
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class CompanyContext(BaseModel):
     sources: list[Source]
 
 
-_found: dict[str, CompanyContext] = {}
+_found: Recent[str, CompanyContext] = Recent()
 
 
 async def lookup(company: str, max_results: int = 3) -> CompanyContext | None:
@@ -34,19 +35,20 @@ async def lookup(company: str, max_results: int = 3) -> CompanyContext | None:
     if not settings.tavily_api_key or not company:
         return None
     if company in _found:
-        return _found[company]
+        return _found.get(company)
     query = f"{company} H-1B visa sponsorship history"
     try:
         reply = await AsyncTavilyClient(api_key=settings.tavily_api_key).search(
             query, search_depth="basic", max_results=max_results
         )
     except Exception:
-        log.warning("Tavily search failed for %s", company, exc_info=True)
+        log.warning("Tavily search failed", exc_info=True)
         return None
     sources = [Source(title=r["title"], url=r["url"], snippet=r["content"]) for r in reply.get("results", [])]
     about = [s for s in sources if mentions(s, company)]
-    _found[company] = CompanyContext(company=company, query=query, sources=about)
-    return _found[company]
+    context = CompanyContext(company=company, query=query, sources=about)
+    _found.put(company, context)
+    return context
 
 
 def mentions(source: Source, company: str) -> bool:

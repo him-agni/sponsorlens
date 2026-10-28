@@ -54,7 +54,7 @@ async def read(http: httpx.AsyncClient, url: str) -> LinkedPosting:
         try:
             job = await greenhouse.fetch_job(http, match["token"], match["id"])
         except httpx.HTTPError as error:
-            log.warning("Greenhouse job fetch failed for %s: %s", url, error)
+            log.warning("Greenhouse job fetch failed: %s", error)
             raise UnreadableLink("Greenhouse has no open job at that link; it may have closed.") from error
         return LinkedPosting(url=url, title=job.title, company=job.company, text=_checked(job.text))
     if not settings.tavily_api_key:
@@ -66,7 +66,7 @@ async def read(http: httpx.AsyncClient, url: str) -> LinkedPosting:
             urls=url, extract_depth="advanced", format="text"
         )
     except Exception as error:
-        log.warning("Tavily extract failed for %s", url, exc_info=True)
+        log.warning("Tavily extract failed for a page on %s", urlsplit(url).hostname, exc_info=True)
         raise UnreadableLink(CANNOT_READ) from error
     results = reply.get("results") or []
     if not results:

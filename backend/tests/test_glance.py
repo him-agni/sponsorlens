@@ -2,6 +2,7 @@ import pytest
 
 from app import glance
 from app.glance import FactKind, read_glance, supports
+from app.recent import Recent
 from test_analyzer import ScriptedModel
 
 POSTING = """<p>Senior Data Engineer, Austin, TX</p>
@@ -12,7 +13,7 @@ POSTING = """<p>Senior Data Engineer, Austin, TX</p>
 
 @pytest.fixture(autouse=True)
 def forget_glances(monkeypatch) -> None:
-    monkeypatch.setattr(glance, "_seen", glance.OrderedDict())
+    monkeypatch.setattr(glance, "_seen", Recent())
 
 
 async def test_facts_are_kept_only_with_a_real_quote() -> None:

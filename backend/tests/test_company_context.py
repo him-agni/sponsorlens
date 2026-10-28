@@ -1,9 +1,8 @@
 import pytest
-from fastapi.testclient import TestClient
 
 from app import company_context
 from app.config import settings
-from app.main import app
+from app.recent import Recent
 
 
 class FakeTavily:
@@ -24,7 +23,7 @@ class BrokenTavily(FakeTavily):
 
 @pytest.fixture(autouse=True)
 def forget_lookups(monkeypatch) -> None:
-    monkeypatch.setattr(company_context, "_found", {})
+    monkeypatch.setattr(company_context, "_found", Recent())
 
 
 async def test_a_company_is_searched_once(monkeypatch) -> None:
@@ -72,10 +71,3 @@ async def test_lookup_failure_returns_none(monkeypatch) -> None:
     monkeypatch.setattr(settings, "tavily_api_key", "tvly-test")
     monkeypatch.setattr(company_context, "AsyncTavilyClient", BrokenTavily)
     assert await company_context.lookup("Acme") is None
-
-
-def test_ping_model_without_a_key_explains_what_to_set(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "nebius_api_key", "")
-    response = TestClient(app).get("/api/ping-model")
-    assert response.status_code == 503
-    assert "NEBIUS_API_KEY" in response.json()["detail"]

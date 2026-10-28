@@ -88,7 +88,10 @@ def site_token(url: str) -> str | None:
     """The likely board token for a company's own careers site: www.databricks.com/careers gives databricks."""
     host = (urlsplit(url).hostname or "").lower()
     labels = [label for label in host.split(".") if label not in ("www", "careers", "jobs", "boards")]
-    return labels[-2] if len(labels) >= 2 else None
+    # Only a plain name goes into a Greenhouse API path.
+    if len(labels) < 2 or not re.fullmatch(r"[a-z0-9-]+", labels[-2]):
+        return None
+    return labels[-2]
 
 
 async def find_board(client: httpx.AsyncClient, url: str) -> str | None:
