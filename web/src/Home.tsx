@@ -37,31 +37,31 @@ const STEPS: { title: string; body: string; icon: ReactNode }[] = [
 const FAQS = [
   {
     q: 'What does SponsorLens check?',
-    a: 'Every line in a posting about work authorization: whether the employer sponsors visas, requires U.S. citizenship, a security clearance or export-control status, or uses E-Verify. It turns those into a verdict for your status, and also pulls out location, work mode, experience, education and salary.',
+    a: 'Whether a job sponsors visas or requires citizenship, a clearance or export-control status. Plus location, experience and salary.',
   },
   {
     q: 'What do Clear, Unclear and Blocked mean?',
-    a: 'Clear: nothing in the posting stops someone with your status. Blocked: the posting rules you out, for example "no sponsorship now or in the future" for someone who needs H-1B. Unclear: the posting doesn\'t say, or contradicts itself, so ask the recruiter. Every verdict shows the lines it is based on.',
+    a: "Clear: nothing stops you. Blocked: the posting rules you out. Unclear: it doesn't say, so ask the recruiter.",
   },
   {
     q: 'Can it be wrong?',
-    a: 'Yes. It reads only what the posting says, and an AI can misread. That is why every verdict quotes the exact lines, which are checked to be really in the posting, so you can judge for yourself. It is information, not legal advice.',
+    a: 'Yes, so every verdict quotes the exact lines it used. It is information, not legal advice.',
   },
   {
     q: 'Which links work?',
-    a: 'Greenhouse, Lever, LinkedIn job pages, Wellfound and most company careers pages. If a site needs a sign-in, SponsorLens says so; paste the description instead. Whole-board scans work for Greenhouse boards.',
+    a: 'LinkedIn, Greenhouse, Lever, Wellfound and most careers pages. Board scans work for Greenhouse.',
   },
   {
     q: 'Do you store the jobs I paste?',
-    a: 'The posting text is never saved. The engine keeps each verdict and its quoted lines so it can recover after a crash, and on this public demo even that is wiped when the server sleeps.',
+    a: 'No. The posting text is never saved.',
   },
   {
     q: 'Why did my first check take a while?',
-    a: 'The free server sleeps when nobody is using it and takes about a minute to wake. After that a check usually takes 10 to 30 seconds, because the AI reasons through the posting before answering.',
+    a: 'The free server sleeps when idle and takes about a minute to wake. After that, checks take 10 to 30 seconds.',
   },
   {
     q: 'What is it built with?',
-    a: 'NVIDIA Nemotron models on Nebius Token Factory read the postings, Tavily reads links and finds company background, and a hand-built engine of sharded queues, a cache and a crash-safe log runs it all. See Under the hood.',
+    a: 'NVIDIA Nemotron on Nebius Token Factory, Tavily, and a hand-built engine. See Under the hood.',
   },
 ]
 
