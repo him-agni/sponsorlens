@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { api, loadSample, type AnalyzeResponse, type CompanyContext, type LinkedPosting, type SampleExamples, type Status } from './api'
+import { api, loadSample, type AnalyzeResponse, type CompanyContext, type FactKind, type Glance, type LinkedPosting, type SampleExamples, type Status } from './api'
 import { Card, LabelIcon, Spinner, VerdictBadge } from './components'
 import { SIGNAL_NAMES, STATUSES, headline, highlight, labelInk, labelName } from './lib'
 
@@ -23,12 +23,16 @@ export function CheckView({ status, onStatus, live }: Props) {
       .catch(() => setExamples([]))
   }, [])
 
-  const verdict = result?.verdicts[status]
-  const company = result?.analysis.company ?? null
+  // Until someone checks a posting, a recorded example shows what an answer looks like.
+  const example = examples.find((ex) => ex.title.startsWith('No sponsorship')) ?? examples[0]
+  const shown = result ?? example?.response ?? null
+  const isExample = !result && !!shown
+  const verdict = shown?.verdicts[status]
+  const company = shown?.analysis.company ?? null
 
   // A status switched to Unclear may need company context the first answer didn't include.
   const needsContext =
-    live && verdict?.label === 'unclear' && !!company && !result?.company_context && !(company in contexts)
+    live && verdict?.label === 'unclear' && !!company && !shown?.company_context && !(company in contexts)
   useEffect(() => {
     if (!needsContext || !company) return
     api<CompanyContext | null>(`/api/company-context?company=${encodeURIComponent(company)}`)
@@ -75,13 +79,13 @@ export function CheckView({ status, onStatus, live }: Props) {
     else setResult(example.response)
   }
 
-  const context = result?.company_context ?? (company ? (contexts[company] ?? null) : null)
+  const context = shown?.company_context ?? (company ? (contexts[company] ?? null) : null)
 
   return (
     <div className="grid gap-6">
       <Card>
         <label htmlFor="posting" className="text-sm font-medium">
-          Paste a job posting, or a link to it
+          Paste a job description or its link
         </label>
         <textarea
           id="posting"
@@ -92,7 +96,7 @@ export function CheckView({ status, onStatus, live }: Props) {
             setLinkedFrom(null)
           }}
           rows={7}
-          placeholder="Paste the full posting, including the benefits and legal sections at the bottom. Or paste its link: Greenhouse, Lever and most company careers pages work; LinkedIn usually doesn't."
+          placeholder="Paste the whole description, or a link from LinkedIn, Greenhouse, Lever or a company careers page"
           className="mt-2 w-full resize-y rounded-xl border border-line bg-page p-3 text-sm leading-relaxed placeholder:text-muted focus:outline-2 focus:outline-accent"
         />
         {linkedFrom && (
@@ -107,7 +111,7 @@ export function CheckView({ status, onStatus, live }: Props) {
           <button
             onClick={() => check(text)}
             disabled={!live || !!busy || !text.trim()}
-            className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-page disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
           >
             {busy && <Spinner />}
             {busy === 'link' ? 'Reading the link…' : busy === 'posting' ? 'Reading the posting…' : isLink ? 'Check link' : 'Check posting'}
@@ -117,11 +121,11 @@ export function CheckView({ status, onStatus, live }: Props) {
               Start over
             </button>
           )}
-          {!live && <span className="text-sm text-muted">Checking new text needs the live engine. The examples work now.</span>}
+          {!live && <span className="text-sm text-muted">Waiting for the engine; the examples work now.</span>}
         </div>
         {examples.length > 0 && (
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-ink-2">Try an example:</span>
+            <span className="text-sm text-ink-2">Or try:</span>
             {examples.map((ex) => (
               <button
                 key={ex.id}
@@ -136,11 +140,15 @@ export function CheckView({ status, onStatus, live }: Props) {
         {error && <p className="mt-3 text-sm text-critical-ink">{error}</p>}
       </Card>
 
-      {result && verdict && (
+      {shown && verdict && (
         <>
-          <VerdictCard result={result} status={status} onStatus={onStatus} />
+          {isExample && (
+            <p className="-mb-3 text-sm text-muted">Example answer for a sample posting. Paste a job above to check your own.</p>
+          )}
+          <VerdictCard result={shown} status={status} onStatus={onStatus} />
+          {shown.glance && shown.glance.facts.length > 0 && <GlanceCard glance={shown.glance} />}
           {verdict.label === 'unclear' && <ContextPanel company={company} context={context} />}
-          <PostingText result={result} status={status} />
+          <PostingText result={shown} status={status} />
         </>
       )}
     </div>
@@ -183,7 +191,7 @@ function VerdictCard({ result, status, onStatus }: { result: AnalyzeResponse; st
       </div>
 
       <div className="mt-5 border-t border-line pt-4">
-        <p className="text-sm text-ink-2">The same posting, for each status:</p>
+        <p className="text-sm text-ink-2">For other statuses:</p>
         <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {STATUSES.map((s) => {
             const label = result.verdicts[s.id].label
@@ -206,6 +214,37 @@ function VerdictCard({ result, status, onStatus }: { result: AnalyzeResponse; st
           })}
         </div>
       </div>
+    </Card>
+  )
+}
+
+const FACTS: { kind: FactKind; name: string }[] = [
+  { kind: 'location', name: 'Location' },
+  { kind: 'work_mode', name: 'Work mode' },
+  { kind: 'employment_type', name: 'Job type' },
+  { kind: 'experience', name: 'Experience' },
+  { kind: 'education', name: 'Education' },
+  { kind: 'salary', name: 'Salary' },
+]
+
+/** The other things that decide whether to apply. Each fact shows the line it came from. */
+function GlanceCard({ glance }: { glance: Glance }) {
+  const facts = FACTS.flatMap(({ kind, name }) => {
+    const fact = glance.facts.find((f) => f.kind === kind)
+    return fact ? [{ ...fact, name }] : []
+  })
+  return (
+    <Card>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">At a glance</p>
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-3">
+        {facts.map((fact) => (
+          <div key={fact.kind} className="min-w-0">
+            <dt className="text-xs text-muted">{fact.name}</dt>
+            <dd className="mt-0.5 font-medium">{fact.value}</dd>
+            <dd className="mt-0.5 line-clamp-2 text-xs text-muted">“{fact.quote}”</dd>
+          </div>
+        ))}
+      </dl>
     </Card>
   )
 }

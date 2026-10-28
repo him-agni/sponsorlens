@@ -129,10 +129,9 @@ function BatchControls({
 
   return (
     <Card>
-      <h2 className="font-semibold">Check many real postings at once</h2>
+      <h2 className="font-semibold">Scan many real jobs at once</h2>
       <p className="mt-1 text-sm text-ink-2">
-        Fetches current US openings from public Greenhouse job boards and runs every posting through the engine. Each company's
-        postings share one shard queue; watch it on the Engine tab.
+        Pulls current US openings from 20 companies' public job boards and checks every one.
       </p>
       {live ? (
         <>
@@ -177,8 +176,8 @@ function BatchControls({
       ) : (
         <p className="mt-3 text-sm text-muted">
           {engineLive
-            ? 'The hosted demo checks single postings live but not batches, which would use up its model credits. Below is a recorded 200-posting run; run SponsorLens locally to start your own.'
-            : 'Starting a batch needs the live engine. Below is a recorded 200-posting run.'}
+            ? 'Below is a scan of 200 real jobs we ran live on Oct 27. Scans are off on this public demo to save model credits; run SponsorLens yourself to start one.'
+            : 'Below is a scan of 200 real jobs we ran live on Oct 27.'}
         </p>
       )}
     </Card>

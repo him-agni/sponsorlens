@@ -1,36 +1,48 @@
 @import "tailwindcss";
 
-/* Tokens from the data-viz reference palette. Status colors are fixed and always paired with an icon and a label. */
+/* Status colors come from the data-viz reference palette, are fixed, and always appear with an icon and a label.
+   Brand is a violet: `brand` fills buttons and highlights (white text on it), `accent` is for links and lines. */
 @theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --color-page: #f9f9f7;
-  --color-surface: #fcfcfb;
-  --color-ink: #0b0b0b;
-  --color-ink-2: #52514e;
-  --color-muted: #6f6d68;
-  --color-grid: #e1e0d9;
-  --color-axis: #c3c2b7;
-  --color-line: rgba(11, 11, 11, 0.1);
-  --color-accent: #2a78d6;
+  --font-sans: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-page: #fcfcfe;
+  --color-surface: #ffffff;
+  --color-tint: #f3f0ff;
+  --color-ink: #13111a;
+  --color-ink-2: #4f4b5c;
+  --color-muted: #6f6b7d;
+  --color-grid: #e4e1ee;
+  --color-axis: #c6c2d4;
+  --color-line: rgba(19, 17, 26, 0.1);
+  --color-brand: #6d28d9;
+  --color-brand-soft: #ede9fe;
+  --color-accent: #6d28d9;
   --color-good: #0ca30c;
   --color-good-ink: #006300;
   --color-warning: #fab219;
   --color-warning-ink: #7a5200;
   --color-critical: #d03b3b;
   --color-critical-ink: #b02a2a;
+
+  --animate-rise: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-marquee: marquee 30s linear infinite;
+  --animate-sweep: sweep 0.9s cubic-bezier(0.6, 0, 0.2, 1) 0.3s both;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-page: #0d0d0d;
-    --color-surface: #1a1a19;
-    --color-ink: #f0efec;
-    --color-ink-2: #c3c2b7;
-    --color-muted: #9a9890;
-    --color-grid: #2c2c2a;
-    --color-axis: #383835;
+    --color-page: #0c0b10;
+    --color-surface: #16141d;
+    --color-tint: #13111b;
+    --color-ink: #f1effa;
+    --color-ink-2: #c4c0d3;
+    --color-muted: #9a96aa;
+    --color-grid: #2a2735;
+    --color-axis: #3a3647;
     --color-line: rgba(255, 255, 255, 0.1);
-    --color-accent: #3987e5;
+    --color-brand: #7c3aed;
+    --color-brand-soft: #2a2245;
+    --color-accent: #a78bfa;
     --color-good-ink: #3fc23f;
     --color-warning-ink: #fab219;
     --color-critical-ink: #ef7a7a;
@@ -39,19 +51,26 @@
 }
 
 :root[data-theme="dark"] {
-  --color-page: #0d0d0d;
-  --color-surface: #1a1a19;
-  --color-ink: #f0efec;
-  --color-ink-2: #c3c2b7;
-  --color-muted: #9a9890;
-  --color-grid: #2c2c2a;
-  --color-axis: #383835;
+  --color-page: #0c0b10;
+  --color-surface: #16141d;
+  --color-tint: #13111b;
+  --color-ink: #f1effa;
+  --color-ink-2: #c4c0d3;
+  --color-muted: #9a96aa;
+  --color-grid: #2a2735;
+  --color-axis: #3a3647;
   --color-line: rgba(255, 255, 255, 0.1);
-  --color-accent: #3987e5;
+  --color-brand: #7c3aed;
+  --color-brand-soft: #2a2245;
+  --color-accent: #a78bfa;
   --color-good-ink: #3fc23f;
   --color-warning-ink: #fab219;
   --color-critical-ink: #ef7a7a;
   color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -62,4 +81,73 @@ body {
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* A word or phrase on a solid brand block that sweeps in from the left, as in the reference design. */
+.mark {
+  background: linear-gradient(var(--color-brand), var(--color-brand)) no-repeat left / 100% 100%;
+  color: #fff;
+  padding: 0 0.15em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  animation: var(--animate-sweep);
+}
+
+@keyframes sweep {
+  from {
+    background-size: 0% 100%;
+    color: var(--color-ink);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Sections fade up as they scroll into view; useReveal adds .shown. */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-reveal].shown {
+  opacity: 1;
+  transform: none;
+}
+/* Hold the highlight sweep until its section is on screen. */
+[data-reveal]:not(.shown) .mark {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
 }

@@ -37,6 +37,30 @@ export function headline(label: Label, status: Status): string {
   return `The posting doesn't settle it for ${who}`
 }
 
+/** Fade sections up as they scroll into view: every [data-reveal] element gets .shown once seen. */
+export function useReveal(deps: unknown[] = []) {
+  useEffect(() => {
+    const targets = document.querySelectorAll<HTMLElement>('[data-reveal]:not(.shown)')
+    if (!('IntersectionObserver' in window)) {
+      targets.forEach((t) => t.classList.add('shown'))
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          entry.target.classList.add('shown')
+          observer.unobserve(entry.target)
+        }
+      },
+      { threshold: 0.12 },
+    )
+    targets.forEach((t) => observer.observe(t))
+    return () => observer.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
+}
+
 /** One value kept in the page URL, so a link reopens the same view. */
 export function useUrlParam<T extends string>(name: string, fallback: T, allowed?: readonly T[]) {
   const read = useCallback(() => {

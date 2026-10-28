@@ -25,12 +25,17 @@ export type CompanyContext = {
 
 export type LinkedPosting = { url: string; title: string | null; company: string | null; text: string }
 
+export type FactKind = 'location' | 'work_mode' | 'experience' | 'education' | 'salary' | 'employment_type'
+export type Glance = { facts: { kind: FactKind; value: string; quote: string }[] }
+
 export type AnalyzeResponse = {
   analysis: Analysis
   verdict: Verdict
   verdicts: Record<Status, Verdict>
   text: string
   company_context: CompanyContext | null
+  // Missing in samples recorded before it existed.
+  glance?: Glance | null
 }
 
 export type BatchRow = {
@@ -43,6 +48,7 @@ export type BatchRow = {
   shard: number | null
   state: string
   error: string | null
+  company_name?: string | null
   verdict: Verdict | null
   labels: Record<Status, Label> | null
 }
