@@ -22,6 +22,7 @@ from app.engine.log import JsonlLogStore
 from app.engine.metrics import Metrics
 from app.engine.queue import QueueClosed
 from app.fixtures import numbered_postings
+from app.glance import Glance, read_glance
 from app.greenhouse import PRESET_COMPANIES
 from app.llm import TokenFactoryModel, make_client
 from app.normalize import normalize
@@ -125,6 +126,11 @@ def get_context_lookup() -> Callable[[str], Awaitable[CompanyContext | None]]:
     return company_context.lookup
 
 
+def get_glance_reader(engine: Engine = Depends(get_engine)) -> Callable[[str], Awaitable[Glance | None]]:
+    # Through the engine's guarded model, so the concurrency cap, retries, metrics and budget all apply.
+    return lambda text: read_glance(engine.model, engine.nano_model, text)
+
+
 @app.get("/metrics")
 async def metrics(engine: Engine = Depends(get_engine)) -> dict:
     return {"backend": settings.model_backend, **engine.metrics.snapshot()}
@@ -143,6 +149,8 @@ class AnalyzeResponse(BaseModel):
     # The normalized posting the quotes were checked against, for highlighting them.
     text: str
     company_context: CompanyContext | None = None
+    # Location, work mode, experience and so on, each quoted; None if that read failed.
+    glance: Glance | None = None
 
 
 @app.post("/api/analyze", dependencies=[Depends(within_hourly_limit)])
@@ -150,9 +158,11 @@ async def analyze(
     request: AnalyzeRequest,
     engine: Engine = Depends(get_engine),
     lookup: Callable[[str], Awaitable[CompanyContext | None]] = Depends(get_context_lookup),
+    read: Callable[[str], Awaitable[Glance | None]] = Depends(get_glance_reader),
 ) -> AnalyzeResponse:
     try:
-        analysis = await engine.analyze(request.text, source="pasted")
+        # The glance never raises, so a failed verdict still fails the request as before.
+        analysis, glance = await asyncio.gather(engine.analyze(request.text, source="pasted"), read(request.text))
     except QueueClosed:
         raise HTTPException(503, "The engine is shutting down")
     except RuntimeError as error:
@@ -176,7 +186,12 @@ async def analyze(
     if verdict.label == Label.UNCLEAR and analysis.company:
         context = await lookup(analysis.company)
     return AnalyzeResponse(
-        analysis=analysis, verdict=verdict, verdicts=verdicts, text=normalize(request.text), company_context=context
+        analysis=analysis,
+        verdict=verdict,
+        verdicts=verdicts,
+        text=normalize(request.text),
+        company_context=context,
+        glance=glance,
     )
 
 

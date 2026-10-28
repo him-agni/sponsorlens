@@ -9,7 +9,8 @@ from app.company_context import CompanyContext
 from app.config import settings
 from app.engine.engine import Engine
 from app.engine.fake_model import FakeModel
-from app.main import app, get_context_lookup, get_link_reader
+from app.glance import Fact, Glance
+from app.main import app, get_context_lookup, get_glance_reader, get_link_reader
 from app.posting_link import LinkedPosting, UnreadableLink
 from test_analyzer import ScriptedModel
 
@@ -20,13 +21,20 @@ def engine_with(model) -> Engine:
     )
 
 
+async def no_glance(text: str) -> None:
+    return None
+
+
 @pytest.fixture
 def client_for(monkeypatch):
-    """Start the app, running its lifespan, on an engine built around the given model."""
+    """Start the app, running its lifespan, on an engine built around the given model.
+
+    The at-a-glance read is stubbed out, so scripted models answer only the verdict's calls."""
     clients = []
 
     def start(model) -> TestClient:
         monkeypatch.setattr(main, "build_engine", lambda: engine_with(model))
+        app.dependency_overrides.setdefault(get_glance_reader, lambda: no_glance)
         client = TestClient(app).__enter__()
         clients.append(client)
         return client
@@ -72,6 +80,17 @@ def test_company_context_endpoint_uses_the_lookup(client_for) -> None:
     app.dependency_overrides[get_context_lookup] = lambda: fake_lookup
     client = client_for(ScriptedModel())
     assert client.get("/api/company-context", params={"company": "Acme"}).json()["company"] == "Acme"
+
+
+def test_analyze_returns_the_glance_beside_the_verdict(client_for) -> None:
+    async def fake_glance(text: str) -> Glance:
+        return Glance(facts=[Fact(kind="work_mode", value="Remote", quote="fully remote")])
+
+    app.dependency_overrides[get_glance_reader] = lambda: fake_glance
+    client = client_for(FakeModel(latency=0, seed=1))
+    body = client.post("/api/analyze", json={"text": "Acme is hiring. This role is fully remote.", "status": "ead"}).json()
+    assert body["glance"]["facts"] == [{"kind": "work_mode", "value": "Remote", "quote": "fully remote"}]
+    assert body["verdict"]["label"] == "clear"
 
 
 def test_analyze_rejects_unknown_status(client_for) -> None:
