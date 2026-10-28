@@ -5,14 +5,15 @@ import { CheckView } from './CheckView'
 import { LabelIcon, StatusPicker } from './components'
 import { LABEL_STYLE, useReveal } from './lib'
 
-// What SponsorLens looks for, floating around the hero in place of photos.
+// What SponsorLens looks for, floating around the hero in place of photos; each explains itself on
+// hover or focus.
 const ORBIT = [
-  { text: 'H-1B sponsorship', x: '2%', y: '42%', delay: '0s' },
-  { text: 'OPT / STEM OPT', x: '13%', y: '22%', delay: '1.2s' },
-  { text: 'Security clearance', x: '33%', y: '2%', delay: '2.1s' },
-  { text: 'E-Verify', x: '62%', y: '4%', delay: '0.6s' },
-  { text: 'Export control', x: '78%', y: '24%', delay: '1.8s' },
-  { text: 'Green card', x: '86%', y: '44%', delay: '0.9s' },
+  { text: 'H-1B sponsorship', meaning: 'The employer files and pays for your H-1B work visa.', x: '2%', y: '42%', delay: '0s' },
+  { text: 'OPT / STEM OPT', meaning: 'Work permission for F-1 students after graduation, for 1 to 3 years.', x: '13%', y: '22%', delay: '1.2s' },
+  { text: 'Security clearance', meaning: 'Government approval to handle classified work; almost always U.S. citizens only.', x: '33%', y: '2%', delay: '2.1s' },
+  { text: 'E-Verify', meaning: "A government check that a new hire may work in the U.S. A STEM OPT extension needs an employer that uses it.", x: '62%', y: '4%', delay: '0.6s' },
+  { text: 'Export control', meaning: 'Some technology may only be shared with U.S. citizens or green card holders, which can rule out visas.', x: '78%', y: '24%', delay: '1.8s' },
+  { text: 'Green card', meaning: 'Permanent residence. Most jobs are open to green card holders.', x: '86%', y: '44%', delay: '0.9s' },
 ]
 const SITES = ['LinkedIn', 'Greenhouse', 'Lever', 'Wellfound', 'Company careers pages']
 
@@ -42,6 +43,10 @@ const FAQS = [
   {
     q: 'What do Clear, Unclear and Blocked mean?',
     a: "Clear: nothing stops you. Blocked: the posting rules you out. Unclear: it doesn't say, so ask the recruiter.",
+  },
+  {
+    q: 'What are E-Verify, export control and a security clearance?',
+    a: 'E-Verify: a government check that a new hire may work in the U.S.; STEM OPT needs an employer that uses it. Export control usually means U.S. citizens and green card holders only; a clearance, U.S. citizens only.',
   },
   {
     q: 'Can it be wrong?',
@@ -153,20 +158,32 @@ function Hero() {
       </div>
 
       {/* The product instead of photos: what it looks for, orbiting three example verdicts. */}
-      <div className="relative mx-auto mt-10 h-52 max-w-4xl px-4 sm:mt-12 sm:h-80" aria-hidden="true">
-        <div className="absolute inset-x-6 top-4 bottom-0 rounded-t-full border-x border-t border-dashed border-axis sm:top-10" />
-        <div className="absolute inset-x-24 top-24 bottom-0 hidden rounded-t-full border-x border-t border-dashed border-grid sm:block" />
+      <div className="relative mx-auto mt-10 h-52 max-w-4xl px-4 sm:mt-12 sm:h-80">
+        <div aria-hidden="true" className="absolute inset-x-6 top-4 bottom-0 rounded-t-full border-x border-t border-dashed border-axis sm:top-10" />
+        <div aria-hidden="true" className="absolute inset-x-24 top-24 bottom-0 hidden rounded-t-full border-x border-t border-dashed border-grid sm:block" />
         {ORBIT.map((chip) => (
-          <span
+          <button
             key={chip.text}
-            className="absolute hidden animate-float items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium shadow-sm sm:inline-flex"
+            type="button"
+            aria-label={chip.text}
+            aria-describedby={`orbit-${chip.text}`}
+            className="group absolute hidden animate-float items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium shadow-sm hover:z-20 hover:border-brand hover:[animation-play-state:paused] focus-visible:z-20 focus-visible:[animation-play-state:paused] sm:inline-flex"
             style={{ left: chip.x, top: chip.y, animationDelay: chip.delay }}
           >
-            <span className="size-1.5 rounded-full bg-brand" />
+            <span className="size-1.5 rounded-full bg-brand" aria-hidden="true" />
             {chip.text}
-          </span>
+            <span
+              id={`orbit-${chip.text}`}
+              role="tooltip"
+              className={`pointer-events-none absolute top-full mt-2 w-60 rounded-xl bg-ink p-3 text-left text-xs leading-snug font-normal text-page opacity-0 shadow-xl transition group-hover:opacity-100 group-focus-visible:opacity-100 ${
+                parseInt(chip.x) > 60 ? 'right-0' : 'left-0'
+              }`}
+            >
+              {chip.meaning}
+            </span>
+          </button>
         ))}
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-3 px-4 sm:gap-5">
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-3 px-4 sm:gap-5">
           <MiniVerdict label="clear" title="Open to OPT" quote="We sponsor H-1B for this role" className="hidden -rotate-6 sm:block [animation-delay:350ms]" />
           <MiniVerdict label="blocked" title="Not open to H-1B" quote="Active TS/SCI clearance required" className="z-10 scale-105 [animation-delay:200ms]" />
           <MiniVerdict label="unclear" title="Ask the recruiter" quote="The posting says nothing about visas" className="hidden rotate-6 sm:block [animation-delay:500ms]" />

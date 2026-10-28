@@ -39,7 +39,14 @@ function App() {
       <EngineBanner state={engine.state} recorded={sample?.recorded} backend={sample?.backend} />
       <header className="sticky top-0 z-30 border-b border-line bg-page/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <button onClick={() => setView('check')} className="flex items-center gap-2 text-lg font-bold tracking-tight">
+          <button
+            onClick={() => {
+              setView('check')
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+            aria-label="SponsorLens, back to the top"
+            className="flex items-center gap-2 text-lg font-bold tracking-tight"
+          >
             <span className="flex size-8 items-center justify-center rounded-xl bg-brand text-white">
               <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
                 <circle cx="10.5" cy="10.5" r="6" />

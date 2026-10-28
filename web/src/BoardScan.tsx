@@ -78,6 +78,15 @@ export function BoardScan({ status, live }: { status: Status; live: boolean }) {
     }
   }
 
+  function startOver() {
+    setUrl('')
+    setKeyword('')
+    setScan(null)
+    setView(null)
+    setError(null)
+    setExample(EXAMPLES[0].token)
+  }
+
   function pickExample(token: string) {
     setError(null)
     if (live) {
@@ -100,7 +109,7 @@ export function BoardScan({ status, live }: { status: Status; live: boolean }) {
   return (
     <div className="grid gap-6">
       <div className="rounded-3xl border border-line bg-surface p-5 sm:p-6">
-        <div className="grid gap-3 sm:grid-cols-[1fr_12rem_auto]">
+        <div className="grid gap-3 sm:grid-cols-[1fr_12rem_auto_auto]">
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -124,6 +133,14 @@ export function BoardScan({ status, live }: { status: Status; live: boolean }) {
             {starting && <Spinner />}
             Scan board
           </button>
+          {(url || keyword || scan || error) && !starting && (
+            <button
+              onClick={startOver}
+              className="rounded-xl border border-line px-5 py-2.5 text-sm font-medium text-ink-2 hover:bg-line"
+            >
+              Start over
+            </button>
+          )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-ink-2">{live ? 'Try:' : 'See a recorded scan:'}</span>

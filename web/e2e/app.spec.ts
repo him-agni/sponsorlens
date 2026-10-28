@@ -124,6 +124,21 @@ test('Under the hood shows the live engine and the recorded run, and Back return
   expect(errors).toEqual([])
 })
 
+test('the logo takes you back to the top', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('navigation', { name: 'Sections' }).getByRole('link', { name: 'FAQ' }).click()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500)
+  await page.getByRole('button', { name: 'SponsorLens, back to the top' }).click()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+})
+
+test('each term around the hero explains itself', async ({ page }) => {
+  await page.goto('/')
+  // The chips float, so hover without waiting for one to hold still; it stops once hovered.
+  await page.getByRole('button', { name: 'E-Verify', exact: true }).hover({ force: true })
+  await expect(page.getByRole('tooltip', { name: /STEM OPT extension needs an employer that uses it/ })).toBeVisible()
+})
+
 test('the FAQ answers open on click', async ({ page }) => {
   await page.goto('/#faq')
   const question = page.getByText('Do you store the jobs I paste?')

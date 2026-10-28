@@ -55,6 +55,25 @@ describe('BoardScan with the engine live', () => {
     expect(within(cards()[0]).getByRole('button', { name: 'Less' })).toBeTruthy()
   })
 
+  it('Start over clears the link, the keyword and the results', async () => {
+    serve({
+      '/api/scan': { id: 'abc123', company: 'spacex', found: 3, scanning: 3 },
+      '/api/batch/abc123': spacex,
+    })
+    render(<BoardScan status="h1b" live />)
+    const link = screen.getByLabelText(/careers page or Greenhouse board link/) as HTMLInputElement
+    const keyword = screen.getByLabelText('Only titles containing') as HTMLInputElement
+    fireEvent.change(link, { target: { value: 'https://www.spacex.com/careers' } })
+    fireEvent.change(keyword, { target: { value: 'engineer' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Scan board' }))
+    await screen.findByRole('heading', { name: 'spacex jobs' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start over' }))
+    expect([link.value, keyword.value]).toEqual(['', ''])
+    expect(screen.queryByRole('heading', { name: 'spacex jobs' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Start over' })).toBeNull()
+  })
+
   it('explains a link it cannot scan', async () => {
     serve({ '/api/scan': Response.json({ detail: "Couldn't find a Greenhouse job board for www.notion.so." }, { status: 422 }) })
     render(<BoardScan status="h1b" live />)
