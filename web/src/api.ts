@@ -23,6 +23,8 @@ export type CompanyContext = {
   sources: { title: string; url: string; snippet: string }[]
 }
 
+export type LinkedPosting = { url: string; title: string | null; company: string | null; text: string }
+
 export type AnalyzeResponse = {
   analysis: Analysis
   verdict: Verdict

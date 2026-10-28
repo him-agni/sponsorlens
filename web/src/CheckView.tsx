@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
-import { api, loadSample, type AnalyzeResponse, type CompanyContext, type SampleExamples, type Status } from './api'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { api, loadSample, type AnalyzeResponse, type CompanyContext, type LinkedPosting, type SampleExamples, type Status } from './api'
 import { Card, LabelIcon, Spinner, VerdictBadge } from './components'
 import { SIGNAL_NAMES, STATUSES, headline, highlight, labelInk, labelName } from './lib'
 
 type Props = { status: Status; onStatus: (s: Status) => void; live: boolean }
 
+const LINK = /^https?:\/\/\S+$/
+
 export function CheckView({ status, onStatus, live }: Props) {
   const [text, setText] = useState('')
   const [result, setResult] = useState<AnalyzeResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [busy, setBusy] = useState<'link' | 'posting' | null>(null)
+  const [linkedFrom, setLinkedFrom] = useState<string | null>(null)
+  const box = useRef<HTMLTextAreaElement>(null)
   const [examples, setExamples] = useState<SampleExamples['examples']>([])
   const [contexts, setContexts] = useState<Record<string, CompanyContext | null>>({})
 
@@ -32,21 +36,41 @@ export function CheckView({ status, onStatus, live }: Props) {
       .catch(() => setContexts((c) => ({ ...c, [company]: null })))
   }, [needsContext, company])
 
-  async function check(posting: string) {
-    setLoading(true)
+  const isLink = LINK.test(text.trim())
+
+  async function check(input: string) {
     setError(null)
     try {
+      let posting = input.trim()
+      // A link is read into the paste box first, so people can see what was checked.
+      if (LINK.test(posting)) {
+        setBusy('link')
+        const linked = await api<LinkedPosting>('/api/read-link', { method: 'POST', body: JSON.stringify({ url: posting }) })
+        posting = linked.text
+        setText(posting)
+        setLinkedFrom(linked.url)
+      }
+      setBusy('posting')
       setResult(await api<AnalyzeResponse>('/api/analyze', { method: 'POST', body: JSON.stringify({ text: posting, status }) }))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
+  }
+
+  function clear() {
+    setText('')
+    setResult(null)
+    setError(null)
+    setLinkedFrom(null)
+    box.current?.focus()
   }
 
   function tryExample(example: SampleExamples['examples'][number]) {
     setText(example.text)
     setError(null)
+    setLinkedFrom(null)
     if (live) check(example.text)
     else setResult(example.response)
   }
@@ -57,25 +81,42 @@ export function CheckView({ status, onStatus, live }: Props) {
     <div className="grid gap-6">
       <Card>
         <label htmlFor="posting" className="text-sm font-medium">
-          Paste a job posting
+          Paste a job posting, or a link to it
         </label>
         <textarea
           id="posting"
+          ref={box}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value)
+            setLinkedFrom(null)
+          }}
           rows={7}
-          placeholder="Paste the full posting, including the benefits and legal sections at the bottom."
+          placeholder="Paste the full posting, including the benefits and legal sections at the bottom. Or paste its link: Greenhouse, Lever and most company careers pages work; LinkedIn usually doesn't."
           className="mt-2 w-full resize-y rounded-xl border border-line bg-page p-3 text-sm leading-relaxed placeholder:text-muted focus:outline-2 focus:outline-accent"
         />
+        {linkedFrom && (
+          <p className="mt-1 text-xs text-muted">
+            Text read from{' '}
+            <a href={linkedFrom} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+              {new URL(linkedFrom).hostname}
+            </a>
+          </p>
+        )}
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button
             onClick={() => check(text)}
-            disabled={!live || loading || !text.trim()}
+            disabled={!live || !!busy || !text.trim()}
             className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-2 text-sm font-medium text-page disabled:opacity-40"
           >
-            {loading && <Spinner />}
-            {loading ? 'Reading the posting…' : 'Check posting'}
+            {busy && <Spinner />}
+            {busy === 'link' ? 'Reading the link…' : busy === 'posting' ? 'Reading the posting…' : isLink ? 'Check link' : 'Check posting'}
           </button>
+          {(text || result || error) && !busy && (
+            <button onClick={clear} className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-2 hover:bg-line">
+              Start over
+            </button>
+          )}
           {!live && <span className="text-sm text-muted">Checking new text needs the live engine. The examples work now.</span>}
         </div>
         {examples.length > 0 && (
