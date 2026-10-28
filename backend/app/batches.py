@@ -42,6 +42,8 @@ class Batch:
     companies: list[str]
     per_company: int
     status: Status
+    # Only titles containing this, e.g. "engineer"; None scans every US job.
+    keyword: str | None = None
     created: float = field(default_factory=time.time)
     items: dict[str, BatchItem] = field(default_factory=dict)
     fetched: set[str] = field(default_factory=set)
@@ -57,8 +59,10 @@ class BatchRunner:
         self.batches: dict[str, Batch] = {}
         self._tasks: dict[str, asyncio.Task] = {}
 
-    async def create(self, companies: list[str], per_company: int, status: Status) -> Batch:
-        batch = Batch(id=uuid4().hex[:8], companies=companies, per_company=per_company, status=status)
+    async def create(
+        self, companies: list[str], per_company: int, status: Status, keyword: str | None = None
+    ) -> Batch:
+        batch = Batch(id=uuid4().hex[:8], companies=companies, per_company=per_company, status=status, keyword=keyword)
         await self.engine.log.append(
             {
                 "type": "batch",
@@ -66,6 +70,7 @@ class BatchRunner:
                 "companies": companies,
                 "per_company": per_company,
                 "status": status.value,
+                "keyword": keyword,
             }
         )
         self.batches[batch.id] = batch
@@ -83,6 +88,7 @@ class BatchRunner:
                         companies=record["companies"],
                         per_company=record["per_company"],
                         status=Status(record["status"]),
+                        keyword=record.get("keyword"),
                         created=record.get("ts", time.time()),
                     )
                 case "submitted" if batch:
@@ -128,7 +134,7 @@ class BatchRunner:
             return
         self.engine.metrics.observe("fetch_ms", (time.perf_counter() - start) * 1000)
         batch.fetched.add(company)
-        for posting in postings[: batch.per_company]:
+        for posting in matching(postings, batch.keyword)[: batch.per_company]:
             job_id = f"{batch.id}:{posting.source}"
             item = batch.items.get(job_id)
             if item is None:
@@ -166,6 +172,7 @@ class BatchRunner:
             "status": status,
             "companies": batch.companies,
             "per_company": batch.per_company,
+            "keyword": batch.keyword,
             "created": batch.created,
             "finished": batch.finished,
             "resumed": batch.resumed,
@@ -175,6 +182,13 @@ class BatchRunner:
             "verdicts": dict(Counter(row["verdict"]["label"] for row in rows if row["verdict"])),
             "items": rows,
         }
+
+
+def matching(postings: list[Posting], keyword: str | None) -> list[Posting]:
+    """Postings whose title contains the keyword, ignoring case."""
+    if not keyword:
+        return postings
+    return [p for p in postings if keyword.casefold() in p.title.casefold()]
 
 
 def _fields(item: BatchItem) -> dict:

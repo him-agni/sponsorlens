@@ -1,5 +1,6 @@
 import time
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -184,6 +185,60 @@ def test_a_batch_runs_and_reports_verdicts_for_any_status(client_for, monkeypatc
     assert view["status"] == "opt"
     assert client.get(url, params={"status": "green_card"}).json()["status"] == "green_card"
     assert [b["id"] for b in client.get("/api/batches").json()] == [view["id"]]
+
+
+def fake_boards(monkeypatch, count: int = 12) -> None:
+    from test_batches import postings_for
+
+    async def fake_board(client, token: str):
+        if token == "nosuchco":
+            raise httpx.HTTPStatusError("404", request=httpx.Request("GET", "x"), response=httpx.Response(404))
+        return postings_for(token, count)
+
+    monkeypatch.setattr(main.greenhouse, "fetch_board", fake_board)
+
+
+def test_a_board_scan_checks_matching_jobs_even_with_batches_off(client_for, monkeypatch) -> None:
+    fake_boards(monkeypatch)
+    monkeypatch.setattr(settings, "live_batches", False)
+    monkeypatch.setattr(settings, "scan_limit", 2)
+    client = client_for(FakeModel(latency=0.001, seed=2))
+    started = client.post(
+        "/api/scan", json={"url": "https://job-boards.greenhouse.io/acme", "status": "opt", "keyword": "engineer 1"}
+    )
+    assert started.status_code == 202
+    # "Engineer 1", "Engineer 10" and "Engineer 11" match; the limit keeps two.
+    assert started.json() == {"id": started.json()["id"], "company": "acme", "found": 3, "scanning": 2}
+
+    url = f"/api/batch/{started.json()['id']}"
+    deadline = time.monotonic() + 10
+    while not (view := client.get(url).json())["finished"] and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert view["progress"] == {"total": 2, "done": 2}
+    assert view["keyword"] == "engineer 1"
+    assert all(row["title"].startswith("Engineer 1") for row in view["items"])
+
+
+def test_a_board_scan_explains_bad_links(client_for, monkeypatch) -> None:
+    fake_boards(monkeypatch)
+    client = client_for(FakeModel())
+    not_greenhouse = client.post("/api/scan", json={"url": "https://example.com/careers"})
+    assert not_greenhouse.status_code == 422
+    assert "Greenhouse job board link" in not_greenhouse.json()["detail"]
+    unknown = client.post("/api/scan", json={"url": "https://boards.greenhouse.io/nosuchco"})
+    assert "Couldn't find" in unknown.json()["detail"]
+    none_match = client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme", "keyword": "chef"})
+    assert 'with "chef" in the title' in none_match.json()["detail"]
+
+
+def test_a_board_scan_counts_every_job_against_the_hourly_limit(client_for, monkeypatch) -> None:
+    fake_boards(monkeypatch)
+    monkeypatch.setattr(settings, "scan_limit", 5)
+    monkeypatch.setattr(settings, "hourly_requests", 8)
+    client = client_for(FakeModel(latency=0))
+    assert client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme"}).status_code == 202
+    refused = client.post("/api/scan", json={"url": "https://boards.greenhouse.io/acme"})
+    assert refused.status_code == 429
 
 
 def test_a_batch_takes_only_preset_companies(client_for) -> None:

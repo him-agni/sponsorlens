@@ -71,6 +71,9 @@ async def fetch_board(client: httpx.AsyncClient, token: str) -> list[Posting]:
     return parse_board(token, response.json())
 
 
+# A company's board, or any page on it: https://job-boards.greenhouse.io/stripe, .../stripe/jobs/8172508.
+BOARD_URL = re.compile(r"^https://(?:boards|job-boards)\.greenhouse\.io/(?:embed/job_board\?for=)?(?P<token>[\w-]+)")
+
 # A job's own page on a Greenhouse-hosted board, e.g. https://job-boards.greenhouse.io/stripe/jobs/8172508.
 JOB_URL = re.compile(r"^https://(?:boards|job-boards)\.greenhouse\.io/(?P<token>[\w-]+)/jobs/(?P<id>\d+)")
 

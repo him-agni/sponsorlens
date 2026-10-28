@@ -41,6 +41,14 @@ def test_budget_is_on_the_dashboard() -> None:
     assert gauges["budget_limit_micro_usd"] == 1_500_000
 
 
+def test_hourly_limit_takes_several_at_once_or_none() -> None:
+    limit = HourlyLimit(per_hour=5, clock=lambda: 0.0)
+    assert limit.take(3)
+    assert not limit.take(3)
+    assert limit.take(2)
+    assert not limit.take()
+
+
 def test_hourly_limit_slides() -> None:
     now = [0.0]
     limit = HourlyLimit(per_hour=2, clock=lambda: now[0])

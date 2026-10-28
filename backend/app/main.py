@@ -12,7 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from app import company_context, greenhouse, posting_link
-from app.batches import BatchRunner
+from app.batches import BatchRunner, matching
 from app.budget import Budget, BudgetExceeded, HourlyLimit
 from app.company_context import CompanyContext
 from app.config import settings
@@ -287,6 +287,48 @@ async def create_batch(body: BatchRequest, batches: BatchRunner = Depends(get_ba
         raise HTTPException(403, "Batches are off on the hosted demo, which shows a recorded run instead")
     batch = await batches.create(body.companies, body.per_company, body.status)
     return {"id": batch.id}
+
+
+class ScanRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=500)
+    status: Status = Status.H1B
+    keyword: str | None = Field(default=None, max_length=60)
+
+
+def budget_spent(engine: Engine) -> bool:
+    gauges = engine.metrics.snapshot()["gauges"]
+    limit = gauges.get("budget_limit_micro_usd")
+    return limit is not None and gauges["budget_spent_micro_usd"] >= limit
+
+
+@app.post("/api/scan", status_code=202)
+async def scan_board(request: Request, body: ScanRequest, batches: BatchRunner = Depends(get_batches)) -> dict:
+    """Scan one company's Greenhouse board: its US jobs, only titles with the keyword if one is given.
+
+    Unlike batches this stays on in the hosted demo, kept small: at most scan_limit jobs, each counted
+    against the hourly limit, and every model call still inside the daily budget.
+    """
+    match = greenhouse.BOARD_URL.match(body.url.strip())
+    if not match:
+        raise HTTPException(422, "Paste a Greenhouse job board link, like https://job-boards.greenhouse.io/stripe")
+    token = match["token"].lower()
+    keyword = (body.keyword or "").strip() or None
+    try:
+        postings = await greenhouse.fetch_board(request.app.state.http, token)
+    except httpx.HTTPError:
+        raise HTTPException(422, f"Couldn't find a Greenhouse board called \"{token}\". Check the link.")
+    found = len(matching(postings, keyword))
+    if not found:
+        titled = f' with "{keyword}" in the title' if keyword else ""
+        raise HTTPException(422, f"No US jobs{titled} on {token}'s board right now.")
+    count = min(found, settings.scan_limit)
+    if budget_spent(batches.engine):
+        raise HTTPException(429, "The live demo has spent today's budget. It resets at midnight UTC.")
+    hourly = getattr(request.app.state, "hourly", None)
+    if hourly and not hourly.take(count):
+        raise HTTPException(429, "The live demo is busy this hour. Try again in a few minutes.")
+    batch = await batches.create([token], count, body.status, keyword)
+    return {"id": batch.id, "company": token, "found": found, "scanning": count}
 
 
 @app.get("/api/batch/{batch_id}")

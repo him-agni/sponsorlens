@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     hourly_requests: int = 60
     # Render sets this to false, so batches there show the recorded run instead of spending credits.
     live_batches: bool = True
+    # Board scans stay on everywhere, but small: at most this many jobs, each counted against the hourly limit.
+    scan_limit: int = 10
 
     cors_origins: list[str] = ["http://localhost:5173"]
 

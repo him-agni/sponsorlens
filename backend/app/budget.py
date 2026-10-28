@@ -49,12 +49,12 @@ class HourlyLimit:
         self._clock = clock
         self._times: deque[float] = deque()
 
-    def take(self) -> bool:
-        """Count one request. False means the hour's allowance is used up."""
+    def take(self, count: int = 1) -> bool:
+        """Count `count` requests. False, counting none, means the hour's allowance can't cover them."""
         now = self._clock()
         while self._times and now - self._times[0] >= 3600:
             self._times.popleft()
-        if len(self._times) >= self.per_hour:
+        if len(self._times) + count > self.per_hour:
             return False
-        self._times.append(now)
+        self._times.extend([now] * count)
         return True
