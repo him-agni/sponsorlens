@@ -1,0 +1,206 @@
+[
+  {
+    "id": "h01-clearance-deep-in-requirements",
+    "note": "Hard: an ordinary app job whose only restriction is a Top Secret clearance in the requirements",
+    "signals": ["security_clearance"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "blocked"},
+    "text": [
+      "Quillon Systems - Mobile App Developer (Arlington, VA)",
+      "",
+      "Build the iOS and Android apps our field teams use every day, from offline sync to push notifications.",
+      "",
+      "Requirements",
+      "- 3+ years shipping React Native or Swift apps",
+      "- Comfort with REST and GraphQL APIs",
+      "- Active Top Secret/SCI clearance with polygraph.",
+      "- A portfolio of apps in the App Store or Google Play",
+      "",
+      "Perks",
+      "- Hybrid schedule and a learning stipend"
+    ]
+  },
+  {
+    "id": "h02-cannot-take-over-sponsorship",
+    "note": "Hard: no sponsorship phrased as not taking over an existing visa",
+    "signals": ["no_sponsorship"],
+    "expected": {"ead": "clear", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Brightwater Health - Senior Data Analyst (Denver, CO)",
+      "",
+      "Turn claims and clinical data into dashboards that care teams trust.",
+      "",
+      "What you bring",
+      "- 4+ years of SQL and Python",
+      "- Experience with Tableau or Looker",
+      "",
+      "We are unable to sponsor or take over sponsorship of an employment visa at this time."
+    ]
+  },
+  {
+    "id": "h03-authorized-but-silent-on-sponsorship",
+    "note": "Hard: asks for work authorization but never says whether it sponsors, so OPT and H-1B stay Unclear",
+    "signals": [],
+    "expected": {"ead": "clear", "opt": "unclear", "h1b": "unclear", "green_card": "clear"},
+    "text": [
+      "Copperleaf Retail - Frontend Engineer (Chicago, IL)",
+      "",
+      "Own the checkout experience for millions of shoppers.",
+      "",
+      "Requirements",
+      "- 3+ years with TypeScript and React",
+      "- A strong eye for accessibility and performance",
+      "",
+      "Applicants must be legally authorized to work in the United States."
+    ]
+  },
+  {
+    "id": "h04-sponsorship-available",
+    "note": "Short offer of sponsorship in the job summary",
+    "signals": ["sponsorship_offered"],
+    "expected": {"ead": "clear", "opt": "clear", "h1b": "clear", "green_card": "clear"},
+    "text": [
+      "Tidewell Energy - Machine Learning Engineer (Houston, TX)",
+      "",
+      "Job summary",
+      "Forecast grid demand with models that run every five minutes. Visa sponsorship is available for this position.",
+      "",
+      "Requirements",
+      "- MS or PhD in a quantitative field",
+      "- Experience deploying models with PyTorch"
+    ]
+  },
+  {
+    "id": "h05-citizens-only-for-contracts",
+    "note": "Citizens only, explained by government contracts",
+    "signals": ["us_citizens_only"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "blocked"},
+    "text": [
+      "Northgate Analytics - Cloud Engineer (Huntsville, AL)",
+      "",
+      "Run the AWS GovCloud platform behind our mission software.",
+      "",
+      "Requirements",
+      "- 3+ years with Terraform and Kubernetes",
+      "",
+      "Due to the nature of our government contracts, this role is open to U.S. citizens only."
+    ]
+  },
+  {
+    "id": "h06-export-control-by-regulation",
+    "note": "Hard: export control stated only through the ITAR regulation's definition",
+    "signals": ["export_control"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Halcyon Aerospace - Embedded Software Engineer (Torrance, CA)",
+      "",
+      "Write flight software for our satellite buses in C and Rust.",
+      "",
+      "Requirements",
+      "- 4+ years of embedded C",
+      "- Familiarity with real-time operating systems",
+      "",
+      "This position requires access to technical data controlled under ITAR. Applicants must be a U.S. person as defined in 22 CFR 120.62."
+    ]
+  },
+  {
+    "id": "h07-green-card-sponsorship",
+    "note": "Offers green card sponsorship as a benefit",
+    "signals": ["sponsorship_offered"],
+    "expected": {"ead": "clear", "opt": "clear", "h1b": "clear", "green_card": "clear"},
+    "text": [
+      "Ridgeline Robotics - Controls Engineer (Pittsburgh, PA)",
+      "",
+      "Tune the motion controllers on our warehouse robots.",
+      "",
+      "Benefits",
+      "- 401(k) with a 4% match",
+      "- We sponsor green cards for employees after their first year.",
+      "- Relocation support"
+    ]
+  },
+  {
+    "id": "h08-no-opt-or-cpt",
+    "note": "Hard: rules out OPT and CPT by name, which still means no sponsorship",
+    "signals": ["no_sponsorship"],
+    "expected": {"ead": "clear", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Summitview Bank - Software Engineer I (Charlotte, NC)",
+      "",
+      "Join a team building the bank's internal payments APIs.",
+      "",
+      "Requirements",
+      "- BS in Computer Science or similar",
+      "- Some experience with Java or C#",
+      "",
+      "We do not hire candidates on OPT, CPT or any visa that requires future sponsorship."
+    ]
+  },
+  {
+    "id": "h09-distractor-sponsors-and-citizens",
+    "note": "Distractor: 'sponsors' and 'citizen' in their business senses, with nothing about work authorization",
+    "signals": [],
+    "expected": {"ead": "clear", "opt": "unclear", "h1b": "unclear", "green_card": "clear"},
+    "text": [
+      "Lumenfield - Product Manager, Analytics (Remote, US)",
+      "",
+      "Partner with executive sponsors to set the roadmap for our self-serve analytics tools.",
+      "",
+      "In this role you will",
+      "- Win over citizen data scientists across the company",
+      "- Run discovery interviews and write clear specs",
+      "",
+      "Salary: $150,000 - $175,000."
+    ]
+  },
+  {
+    "id": "h10-clearance-that-needs-citizenship",
+    "note": "Two restrictions in one sentence: a clearance and U.S. citizenship",
+    "signals": ["security_clearance", "us_citizens_only"],
+    "expected": {"ead": "blocked", "opt": "blocked", "h1b": "blocked", "green_card": "blocked"},
+    "text": [
+      "Kestrel Defense - Data Engineer (Colorado Springs, CO)",
+      "",
+      "Build pipelines for satellite telemetry.",
+      "",
+      "Requirements",
+      "- 3+ years with Python and Spark",
+      "- You must be able to obtain a Secret clearance, which requires U.S. citizenship."
+    ]
+  },
+  {
+    "id": "h11-sponsorship-as-faq",
+    "note": "Hard: the offer is written as a question and answer",
+    "signals": ["sponsorship_offered"],
+    "expected": {"ead": "clear", "opt": "clear", "h1b": "clear", "green_card": "clear"},
+    "text": [
+      "Orchard Labs - Backend Engineer (New York, NY)",
+      "",
+      "Scale the APIs behind our grocery delivery app.",
+      "",
+      "FAQ",
+      "Do you sponsor visas?",
+      "Yes. We sponsor H-1B visas and support transfers.",
+      "Is this role remote?",
+      "No, we work from our Manhattan office three days a week."
+    ]
+  },
+  {
+    "id": "h12-sponsorship-field",
+    "note": "Hard: no sponsorship given as a short field in a header block",
+    "signals": ["no_sponsorship"],
+    "expected": {"ead": "clear", "opt": "blocked", "h1b": "blocked", "green_card": "clear"},
+    "text": [
+      "Granite Logistics - DevOps Engineer",
+      "",
+      "Location: Dallas, TX",
+      "Type: Full-time",
+      "Visa sponsorship: Not available",
+      "",
+      "Keep our CI pipelines fast and our on-call quiet.",
+      "",
+      "Requirements",
+      "- 3+ years with GitHub Actions or Jenkins",
+      "- Linux and networking fundamentals"
+    ]
+  }
+]
