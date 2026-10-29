@@ -39,7 +39,7 @@ describe('BoardScan with the engine live', () => {
       '/api/batch/abc123': spacex,
     })
     render(<BoardScan status="h1b" live />)
-    fireEvent.change(screen.getByLabelText(/careers page or Greenhouse board link/), {
+    fireEvent.change(screen.getByLabelText(/careers page or job board link/), {
       target: { value: 'https://www.spacex.com/careers' },
     })
     fireEvent.change(screen.getByLabelText('Only titles containing'), { target: { value: 'engineer' } })
@@ -61,7 +61,7 @@ describe('BoardScan with the engine live', () => {
       '/api/batch/abc123': spacex,
     })
     render(<BoardScan status="h1b" live />)
-    const link = screen.getByLabelText(/careers page or Greenhouse board link/) as HTMLInputElement
+    const link = screen.getByLabelText(/careers page or job board link/) as HTMLInputElement
     const keyword = screen.getByLabelText('Only titles containing') as HTMLInputElement
     fireEvent.change(link, { target: { value: 'https://www.spacex.com/careers' } })
     fireEvent.change(keyword, { target: { value: 'engineer' } })
@@ -77,7 +77,7 @@ describe('BoardScan with the engine live', () => {
   it('explains a link it cannot scan', async () => {
     serve({ '/api/scan': Response.json({ detail: "Couldn't find a Greenhouse job board for www.notion.so." }, { status: 422 }) })
     render(<BoardScan status="h1b" live />)
-    fireEvent.change(screen.getByLabelText(/careers page or Greenhouse board link/), { target: { value: 'https://www.notion.so/careers' } })
+    fireEvent.change(screen.getByLabelText(/careers page or job board link/), { target: { value: 'https://www.notion.so/careers' } })
     fireEvent.click(screen.getByRole('button', { name: 'Scan board' }))
     expect(await screen.findByText(/Couldn't find a Greenhouse job board for www.notion.so/)).toBeTruthy()
   })

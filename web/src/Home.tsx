@@ -54,7 +54,7 @@ const FAQS = [
   },
   {
     q: 'Which links work?',
-    a: 'LinkedIn, Greenhouse, Lever, Wellfound and most careers pages. Board scans work for Greenhouse.',
+    a: 'LinkedIn, Greenhouse, Lever, Wellfound and most careers pages. Board scans work for companies on Greenhouse, Lever or Ashby.',
   },
   {
     q: 'Do you store the jobs I paste?',

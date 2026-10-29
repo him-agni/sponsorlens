@@ -89,7 +89,7 @@ test('scanning a board shows job cards, filtered by verdict', async ({ page }) =
     route.fulfill({ json: { id: 'scan1', status: 'h1b', finished: true, progress: { total: 2, done: 2 }, items: rows } }),
   )
   await page.goto('/#scan')
-  await page.getByLabel('Company careers page or Greenhouse board link').fill('https://www.acme.com/careers')
+  await page.getByLabel('Company careers page or job board link').fill('https://www.acme.com/careers')
   await page.getByRole('button', { name: 'Scan board' }).click()
 
   await expect(page.getByRole('heading', { name: 'acme jobs' })).toBeVisible()
