@@ -50,7 +50,7 @@ const FAQS = [
   },
   {
     q: 'Can it be wrong?',
-    a: 'Yes, so every verdict quotes the exact lines it used. It is information, not legal advice.',
+    a: 'It can. It got all 27 of our test postings right, measured in LangSmith, but real postings vary. So every verdict quotes the exact lines it used. It is information, not legal advice.',
   },
   {
     q: 'Which links work?',
@@ -66,7 +66,7 @@ const FAQS = [
   },
   {
     q: 'What is it built with?',
-    a: 'NVIDIA Nemotron on Nebius Token Factory, Tavily, and a hand-built engine. See Under the hood.',
+    a: 'NVIDIA Nemotron on Nebius Token Factory, Tavily, and a hand-built engine, with accuracy tested in LangSmith. See Under the hood.',
   },
 ]
 

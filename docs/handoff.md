@@ -44,7 +44,7 @@ These come from the owner and apply to every change.
 | --- | --- |
 | Nebius Token Factory | Key in `.env`. $25 promo credit (Oct 24) plus $25 from the AI Builder Program (Oct 28), so about $50 in all. Spent so far: well under $1 (eval, a 10-posting probe, the $0.30 sample run) |
 | Tavily | Key in `.env` since Oct 27. Free plan (1,000 searches a month) plus $25 Builder Program credit (Oct 28) |
-| LangSmith | `LANGSMITH_API_KEY` in `.env` (Oct 28). $100 Builder Program credit, Personal org, spend limit $10 a month, base 14-day retention. Planned for tracing local eval and benchmark runs only, never the hosted demo, because traces would carry pasted posting text |
+| LangSmith | `LANGSMITH_API_KEY` in `.env` (Oct 28). $100 Builder Program credit, Personal org, spend limit $10 a month, base 14-day retention. Used by `scripts/experiment.py` on a local machine only: dataset `sponsorlens-postings` (27 invented postings) and one experiment per model setup, all traced. Never the hosted demo, because traces would carry pasted posting text; the app doesn't import `langsmith` (a dev dependency, which Render skips) |
 | Toloka, Tandem | $50 each offered by the Builder Program; not used this week (human labeling is too slow for the deadline) |
 | Render | Free tier, no card. Services: `sponsorlens` (API, created by hand because the blueprint's `sponsorlens-api` step failed) and `sponsorlens-web` (static site) |
 | Render env vars | API: `CORS_ORIGINS=["https://sponsorlens-web.onrender.com"]`, `NEBIUS_API_KEY`, `TAVILY_API_KEY`, `LIVE_BATCHES=false`, `DAILY_BUDGET_USD=1`, `HOURLY_REQUESTS=60` (set Oct 28 through the Render API, raised from $0.50 and 30 by the owner the same evening for board scans; the service was made by hand, so `render.yaml` is not applied to it). A stray `VITE_API_URL` on the API service is harmless. Web: `VITE_API_URL=https://sponsorlens.onrender.com`. Vite bakes `VITE_API_URL` in at build time, so changing it needs a web redeploy |
@@ -58,9 +58,10 @@ From `backend/`:
 | `uv sync` | Install dependencies | — |
 | `uv run uvicorn app.main:app --reload` | API on :8000 (live model if `.env` has a key) | Credits per analysis |
 | `MODEL_BACKEND=fake uv run uvicorn app.main:app` | API on the fake model | Free |
-| `uv run pytest` | 204 tests, fake model only; add `--cov=app --cov-report=term-missing` for coverage (99% on Oct 28) | Free |
+| `uv run pytest` | 232 tests, fake model only; add `--cov=app --cov-report=term-missing` for coverage (99% on Oct 28) | Free |
 | `uv run python -m scripts.check_setup` | Pings both models, reads rate limits, tests JSON mode and Tavily | A few cents |
 | `uv run python -m scripts.eval` | Phase 1 gate: 15 fixtures on the real models | About $0.10 |
+| `uv run python -m scripts.experiment [--setup ...]` | LangSmith experiments: 27 postings (15 fixtures plus 12 hard cases) scored per setup (`cascade`, `nano-only`, `ultra-only`, `cascade-no-reasoning`); findings in `docs/accuracy.md`; each run rewrites `backend/results/<setup>.json` and `docs/accuracy-by-posting.md` | $0.01 to $0.09 per setup |
 | `uv run python -m scripts.rehearse` | Phase 2 gate: 200 fake jobs, live queue view | Free |
 | `uv run python -m scripts.bench` | Benchmark: workers, cache and shards on the fake model with live latencies, 3 seeds each (about 10 minutes); results in `docs/bench.md` | Free |
 | `uv run python -m scripts.kill_test` | Phase 3 gate: real Greenhouse postings, fake model, kill and resume | Free |
@@ -90,7 +91,8 @@ From `web/`: `npm install`, then `npm run dev` (Vite on :5173, proxying `/api`, 
 | `backend/app/boards.py` | Board keys (`stripe`, `lever:palantir`, `ashby:openai`), `fetch_board` for any of them, and `find_board`: a board link names its board; a careers site tries Greenhouse, then Ashby, then Lever |
 | `backend/app/posting_link.py` | Reads a posting from a link: Greenhouse through its API, anything else through Tavily Extract (advanced). Rewrites search-page links (Wellfound `job_listing_slug`, LinkedIn `currentJobId`) to the job's own page. Refuses sign-in walls (under 300 characters) and anything that doesn't look like one posting (over 40,000 characters, or fewer than 4 of 17 posting words) |
 | `backend/app/batches.py` | `BatchRunner`: one fetcher per company, resume from the log, `view()` |
-| `backend/app/fixtures.py` | 15 invented postings (`backend/fixtures/postings.json`), `numbered_postings` |
+| `backend/app/fixtures.py` | 15 invented postings (`backend/fixtures/postings.json`), 12 hard cases for the experiments (`backend/fixtures/hard_cases.json`), `numbered_postings` |
+| `backend/scripts/experiment.py` | LangSmith dataset sync, one experiment per model setup, evaluators (all four statuses right, share of statuses right, quotes verified, signals match, cost) |
 | `backend/app/engine/queue.py` | Hand-written `BoundedQueue` on two `asyncio.Condition`s |
 | `backend/app/engine/pool.py` | `WorkerPool`, graceful drain |
 | `backend/app/engine/guarded.py` | Global semaphore plus retries with full-jitter backoff on 429/5xx |
@@ -195,4 +197,4 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 ## Next steps
 
 1. Phase 6, Thu Oct 29: README (what it does, live link, how to run, architecture, benchmark, roadmap with the tester's wider-scope idea), video script and shot list, finish `FEEDBACK.md`, draft the Devpost fields; the owner records the video and submits.
-2. Optional, only if Phase 6 is on time: LangSmith tracing for the eval and benchmark scripts (key in `.env`; local runs only).
+2. Done Oct 28: LangSmith accuracy experiments (`docs/accuracy.md`; latest results per setup in `backend/results/`, table per posting in `docs/accuracy-by-posting.md`, both rewritten by each run). Over two runs, the app's cascade got 27/27 right with every quote verified (about $0.045); Nano alone also got 27/27 (about $0.007); Ultra alone got 27/27, then 26/27; reasoning off missed the contradictory footer both times (26/27). The app keeps the cascade until a larger, real-posting dataset settles it. Optional: make the dataset and experiments public in LangSmith so the README can link them.

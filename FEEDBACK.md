@@ -50,6 +50,14 @@ Running notes for the hackathon feedback form. Add to it as things come up.
 - `chat_template_kwargs: {"enable_thinking": false}` is honored by Nano on Token Factory: the same kind of noisy page came back in 1.4 s with 43 output tokens and the right sentence. SponsorLens now keeps reasoning on for the first try and turns it off only for the retry. A per-request reasoning budget (say, "think for at most 2,000 tokens, then answer") would be better than this all-or-nothing switch.
 - A typical live check on the hosted demo costs about $0.0015 to $0.004; a $0.50 daily cap covers a few hundred checks.
 
+## Accuracy experiments in LangSmith (Oct 28)
+
+- 27 invented postings, 12 of them hard cases, each run through four setups, twice.
+  - Nano finding and Ultra classifying (the app's setup) and Nano alone scored 27/27 both times, with every quote found word for word in the posting.
+  - Ultra alone scored 27/27, then 26/27. The second time it read "must be legally authorized to work in the United States" as ruling out sponsorship.
+- Nano alone cost about $0.007 for all 27, against $0.045 for the cascade, but was the slowest (median 8 to 10 s). Ultra alone was the fastest (median under 3 s, slowest about 5 s). For a short extraction task, Nano 3 is enough.
+- With `enable_thinking: false`, the cascade ran in 1.6 s per posting. In both runs, though, it missed a "without sponsorship" line in a legal footer that contradicted an earlier offer. Reasoning earns its cost on exactly the cases that matter most.
+
 ## What worked well
 
 - The public model catalog JSON and the `llms.txt` docs index made it possible to plan model choice and rate limits before having a key.

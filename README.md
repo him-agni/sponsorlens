@@ -32,6 +32,12 @@ uv run pytest
 uv run python -m scripts.eval
 ```
 
+The LangSmith experiments score the verdicts on 27 invented postings, 12 of them hard cases, and compare model setups side by side. The app's setup got all 27 right, with every quote found in the posting. The findings are in [docs/accuracy.md](docs/accuracy.md), each posting's result in [docs/accuracy-by-posting.md](docs/accuracy-by-posting.md), and the raw results in [backend/results/](backend/results/).
+
+```bash
+uv run python -m scripts.experiment --setup cascade nano-only ultra-only cascade-no-reasoning
+```
+
 The web app has unit and component tests (Vitest) and end-to-end tests (Playwright, in the installed Microsoft Edge, against the API on the fake model). From `web/`:
 
 ```bash
