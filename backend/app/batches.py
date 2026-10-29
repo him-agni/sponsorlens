@@ -18,7 +18,7 @@ from uuid import uuid4
 
 from app.engine.engine import Engine
 from app.engine.jobs import Job, JobState
-from app.greenhouse import Posting
+from app.postings import Posting
 from app.rules import decide
 from app.schemas import Status
 

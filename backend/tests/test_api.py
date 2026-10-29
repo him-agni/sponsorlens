@@ -5,7 +5,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app import main
+from app import ashby, greenhouse, lever, main
 from app.budget import BudgetExceeded
 from app.company_context import CompanyContext
 from app.config import settings
@@ -173,7 +173,7 @@ def test_a_batch_runs_and_reports_verdicts_for_any_status(client_for, monkeypatc
     async def fake_board(client, token: str):
         return postings_for(token)
 
-    monkeypatch.setattr(main.greenhouse, "fetch_board", fake_board)
+    monkeypatch.setattr(greenhouse, "fetch_board", fake_board)
     client = client_for(FakeModel(latency=0.001, seed=2))
     created = client.post("/api/batch", json={"companies": ["stripe", "figma"], "per_company": 3, "status": "opt"})
     assert created.status_code == 202
@@ -198,8 +198,14 @@ def fake_boards(monkeypatch, count: int = 12) -> None:
     async def fake_name(client, token: str):
         return {"acme": "Acme Robotics"}.get(token)
 
-    monkeypatch.setattr(main.greenhouse, "fetch_board", fake_board)
-    monkeypatch.setattr(main.greenhouse, "board_name", fake_name)
+    async def no_board(client, token: str) -> bool:
+        return False
+
+    monkeypatch.setattr(greenhouse, "fetch_board", fake_board)
+    monkeypatch.setattr(greenhouse, "board_name", fake_name)
+    # Careers sites that aren't on Greenhouse would next be tried on Ashby and Lever; keep that offline.
+    monkeypatch.setattr(ashby, "has_board", no_board)
+    monkeypatch.setattr(lever, "has_board", no_board)
 
 
 def test_a_company_careers_page_scans_its_greenhouse_board(client_for, monkeypatch) -> None:
@@ -236,7 +242,7 @@ def test_a_board_scan_explains_bad_links(client_for, monkeypatch) -> None:
     client = client_for(FakeModel())
     not_greenhouse = client.post("/api/scan", json={"url": "https://example.com/careers"})
     assert not_greenhouse.status_code == 422
-    assert "Couldn't find a Greenhouse job board for example.com" in not_greenhouse.json()["detail"]
+    assert "Couldn't find a job board for example.com" in not_greenhouse.json()["detail"]
     assert "a link" in client.post("/api/scan", json={"url": "stripe"}).json()["detail"]
     search = client.post("/api/scan", json={"url": "https://my.greenhouse.io/jobs/search?query=frontend"})
     assert "needs a sign-in" in search.json()["detail"]
@@ -370,8 +376,8 @@ def test_a_greenhouse_outage_is_reported_as_such(client_for, monkeypatch) -> Non
     async def down(client, url: str):
         raise httpx.ConnectError("Greenhouse is down")
 
-    monkeypatch.setattr(main.greenhouse, "find_board", down)
+    monkeypatch.setattr(main.boards, "find_board", down)
     client = client_for(FakeModel())
     response = client.post("/api/scan", json={"url": "https://www.acme.com/careers"})
     assert response.status_code == 502
-    assert "Greenhouse didn't answer" in response.json()["detail"]
+    assert "The job board didn't answer" in response.json()["detail"]

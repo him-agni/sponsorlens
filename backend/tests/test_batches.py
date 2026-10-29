@@ -7,7 +7,7 @@ from app.engine.engine import Engine
 from app.engine.fake_model import FakeModel
 from app.engine.log import MemoryLogStore
 from app.fixtures import load_fixtures
-from app.greenhouse import Posting
+from app.postings import Posting
 from app.schemas import Status
 
 FIXTURES = load_fixtures()

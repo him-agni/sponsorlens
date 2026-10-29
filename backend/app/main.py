@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from app import company_context, greenhouse, posting_link
+from app import boards, company_context, posting_link
 from app.batches import BatchRunner, matching
 from app.budget import Budget, BudgetExceeded, HourlyLimit, demo_over
 from app.company_context import CompanyContext
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
     http = app.state.http = httpx.AsyncClient(timeout=30, headers={"User-Agent": "SponsorLens/0.1 (hackathon demo)"})
     if engine:
         await engine.start()  # replays the log
-        app.state.batches = BatchRunner(engine, lambda token: greenhouse.fetch_board(http, token))
+        app.state.batches = BatchRunner(engine, lambda board: boards.fetch_board(http, board))
         app.state.batches.resume(engine.replayed)
     yield
     if app.state.batches:
@@ -294,11 +294,11 @@ def budget_spent(engine: Engine) -> bool:
 
 @app.post("/api/scan", status_code=202, dependencies=[Depends(live_demo_open)])
 async def scan_board(request: Request, body: ScanRequest, batches: BatchRunner = Depends(get_batches)) -> dict:
-    """Scan one company's Greenhouse board: its US jobs, only titles with the keyword if one is given.
+    """Scan one company's job board (Greenhouse, Lever or Ashby): its US jobs, only titles with the keyword if one is given.
 
     Unlike batches this stays on in the hosted demo, kept small: at most scan_limit jobs, each counted
     against the hourly limit, and every model call still inside the daily budget. The first count is
-    taken before anything is fetched, so failed lookups can't make the server hammer Greenhouse.
+    taken before anything is fetched, so failed lookups can't make the server hammer the boards' APIs.
     """
     if budget_spent(batches.engine):
         raise HTTPException(429, "The live demo has spent today's budget. It resets at midnight UTC.")
@@ -312,32 +312,33 @@ async def scan_board(request: Request, body: ScanRequest, batches: BatchRunner =
             "(like https://job-boards.greenhouse.io/stripe), or open a job and check its link above.",
         )
     if not url.startswith(("https://", "http://")):
-        raise HTTPException(422, "Paste a link to a company's jobs page, like https://job-boards.greenhouse.io/stripe")
+        raise HTTPException(422, "Paste a link to a company's jobs page, like https://jobs.lever.co/palantir")
     try:
-        token = await greenhouse.find_board(request.app.state.http, url)
+        board = await boards.find_board(request.app.state.http, url)
     except httpx.HTTPError:
-        raise HTTPException(502, "Greenhouse didn't answer. Try again in a minute.")
-    if token is None:
+        raise HTTPException(502, "The job board didn't answer. Try again in a minute.")
+    if board is None:
         site = urlsplit(url).hostname
         raise HTTPException(
             422,
-            f"Couldn't find a Greenhouse job board for {site}. Board scans work for companies whose jobs are on "
-            "Greenhouse; you can still check single jobs from any site above.",
+            f"Couldn't find a job board for {site}. Board scans work for companies whose jobs are on Greenhouse, "
+            "Lever or Ashby; you can still check single jobs from any site above.",
         )
+    company = boards.company(board)
     keyword = (body.keyword or "").strip() or None
     try:
-        postings = await greenhouse.fetch_board(request.app.state.http, token)
+        postings = await boards.fetch_board(request.app.state.http, board)
     except httpx.HTTPError:
-        raise HTTPException(422, f"Couldn't find a Greenhouse board called \"{token}\". Check the link.")
+        raise HTTPException(422, f"Couldn't find a job board called \"{company}\". Check the link.")
     found = len(matching(postings, keyword))
     if not found:
         titled = f' with "{keyword}" in the title' if keyword else ""
-        raise HTTPException(422, f"No US jobs{titled} on {token}'s board right now.")
+        raise HTTPException(422, f"No US jobs{titled} on {company}'s board right now.")
     count = min(found, settings.scan_limit)
     if count > 1:
         charge(request, count - 1)
-    batch = await batches.create([token], count, body.status, keyword)
-    return {"id": batch.id, "company": token, "found": found, "scanning": count}
+    batch = await batches.create([board], count, body.status, keyword)
+    return {"id": batch.id, "company": company, "found": found, "scanning": count}
 
 
 @app.get("/api/batch/{batch_id}")

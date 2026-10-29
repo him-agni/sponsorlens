@@ -1,6 +1,6 @@
 """Read a job posting from a link, so people can paste a URL instead of the text.
 
-Greenhouse links go through its public Job Board API. Any other page goes through Tavily Extract,
+Greenhouse and Lever job links go through their public APIs. Any other page goes through Tavily Extract,
 so the server never fetches arbitrary URLs itself.
 """
 
@@ -11,7 +11,7 @@ import httpx
 from pydantic import BaseModel
 from tavily import AsyncTavilyClient
 
-from app import greenhouse
+from app import greenhouse, lever
 from app.config import settings
 from app.normalize import normalize
 
@@ -50,13 +50,15 @@ class LinkedPosting(BaseModel):
 
 async def read(http: httpx.AsyncClient, url: str) -> LinkedPosting:
     url = direct_link(url)
-    if match := greenhouse.JOB_URL.match(url):
-        try:
-            job = await greenhouse.fetch_job(http, match["token"], match["id"])
-        except httpx.HTTPError as error:
-            log.warning("Greenhouse job fetch failed: %s", error)
-            raise UnreadableLink("Greenhouse has no open job at that link; it may have closed.") from error
-        return LinkedPosting(url=url, title=job.title, company=job.company, text=_checked(job.text))
+    # Boards with a public API for one job are read from it: cleaner text, and no Tavily call.
+    for name, board in (("Greenhouse", greenhouse), ("Lever", lever)):
+        if match := board.JOB_URL.match(url):
+            try:
+                job = await board.fetch_job(http, match["token"], match["id"])
+            except httpx.HTTPError as error:
+                log.warning("%s job fetch failed: %s", name, error)
+                raise UnreadableLink(f"{name} has no open job at that link; it may have closed.") from error
+            return LinkedPosting(url=url, title=job.title, company=job.company, text=_checked(job.text))
     if not settings.tavily_api_key:
         raise UnreadableLink("Reading links from that site needs a Tavily key; paste the posting's text instead.")
     try:
