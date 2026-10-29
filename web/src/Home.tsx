@@ -15,22 +15,22 @@ const ORBIT = [
   { text: 'Export control', meaning: 'Some technology may only be shared with U.S. citizens or green card holders, which can rule out visas.', x: '78%', y: '24%', delay: '1.8s' },
   { text: 'Green card', meaning: 'Permanent residence. Most jobs are open to green card holders.', x: '86%', y: '44%', delay: '0.9s' },
 ]
-const SITES = ['LinkedIn', 'Greenhouse', 'Lever', 'Wellfound', 'Company careers pages']
+const SITES = ['LinkedIn', 'Greenhouse', 'Lever', 'Ashby', 'Wellfound', 'Company careers pages']
 
 const STEPS: { title: string; body: string; icon: ReactNode }[] = [
   {
     title: 'Pick your status',
-    body: 'EAD, OPT or STEM OPT, needs H-1B sponsorship, or green card. You can switch any time; the answer updates at once.',
+    body: 'EAD, OPT, H-1B or green card. Switch any time.',
     icon: <path d="M8 2.5l4.5 2v3.2c0 2.8-1.9 5-4.5 5.8-2.6-.8-4.5-3-4.5-5.8V4.5z M6 8l1.5 1.5L10.5 6.5" />,
   },
   {
     title: 'Paste a job',
-    body: 'The description, or a link from LinkedIn, Greenhouse, Lever or a careers page. Or scan a whole Greenhouse board.',
+    body: 'Its description or link, or a whole careers page.',
     icon: <path d="M5.5 3.5h-1a1 1 0 00-1 1v8a1 1 0 001 1h7a1 1 0 001-1v-8a1 1 0 00-1-1h-1M6 2.5h4v2H6zM6 8h4M6 10.5h3" />,
   },
   {
     title: 'Read your answer',
-    body: 'Clear, Unclear or Blocked, with the exact lines that decide it, plus location, experience and salary at a glance.',
+    body: 'Clear, Unclear or Blocked, with the lines that prove it.',
     icon: <path d="M2.5 8s2-4 5.5-4 5.5 4 5.5 4-2 4-5.5 4-5.5-4-5.5-4z M8 9.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />,
   },
 ]
@@ -96,19 +96,25 @@ export function Home({ status, onStatus, live }: { status: Status; onStatus: (s:
       </Section>
 
       <Section id="how" pill="How it works" title={<>Three steps to <span className="mark">a straight answer</span></>}>
-        <ol className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {/* A compact row per step on phones (icon beside the text); cards with big numbers on larger screens. */}
+        <ol className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
           {STEPS.map((step, i) => (
-            <li key={step.title} className="rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-1 hover:shadow-lg">
-              <div className="flex items-center justify-between">
+            <li
+              key={step.title}
+              className="flex items-start gap-4 rounded-3xl border border-line bg-surface p-4 transition hover:-translate-y-1 hover:shadow-lg sm:block sm:p-6"
+            >
+              <div className="flex shrink-0 items-center justify-between">
                 <span className="flex size-11 items-center justify-center rounded-2xl bg-brand-soft text-accent">
                   <svg viewBox="0 0 16 16" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     {step.icon}
                   </svg>
                 </span>
-                <span className="text-4xl font-bold text-grid">0{i + 1}</span>
+                <span className="hidden text-4xl font-bold text-grid sm:inline">0{i + 1}</span>
               </div>
-              <h3 className="mt-5 text-lg font-semibold">{step.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{step.body}</p>
+              <div>
+                <h3 className="font-semibold sm:mt-5 sm:text-lg">{step.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-ink-2 sm:mt-1.5">{step.body}</p>
+              </div>
             </li>
           ))}
         </ol>
@@ -145,7 +151,10 @@ function Hero() {
           Is this job open to <span className="mark">your work status?</span>
         </h1>
         <p className="mx-auto mt-5 max-w-2xl animate-rise text-lg text-ink-2 [animation-delay:150ms]">
-          SponsorLens reads any US job posting and tells you in seconds whether you can apply, quoting the exact lines that decide it.
+          <span className="sm:hidden">Paste a job. Get a straight answer, with proof.</span>
+          <span className="hidden sm:inline">
+            SponsorLens reads any US job posting and tells you in seconds whether you can apply, quoting the exact lines that decide it.
+          </span>
         </p>
         <div className="mt-7 flex animate-rise flex-wrap justify-center gap-3 [animation-delay:250ms]">
           <a href="#check" className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/25 transition hover:brightness-110">
@@ -282,14 +291,14 @@ function Section({
   children: ReactNode
 }) {
   return (
-    <section id={id} className={`scroll-mt-16 py-16 sm:py-20 ${tinted ? 'bg-tint' : ''}`}>
+    <section id={id} className={`scroll-mt-16 py-12 sm:py-20 ${tinted ? 'bg-tint' : ''}`}>
       <div className="mx-auto max-w-5xl px-4" data-reveal>
         <div className="text-center">
           <span className="inline-block rounded-full border border-line bg-surface px-4 py-1 text-sm">{pill}</span>
           <h2 className="mx-auto mt-4 max-w-3xl text-3xl leading-tight font-bold tracking-tight sm:text-4xl">{title}</h2>
-          {intro && <p className="mx-auto mt-3 max-w-2xl text-ink-2">{intro}</p>}
+          {intro && <p className="mx-auto mt-3 hidden max-w-2xl text-ink-2 sm:block">{intro}</p>}
         </div>
-        <div className="mt-10">{children}</div>
+        <div className="mt-8 sm:mt-10">{children}</div>
       </div>
     </section>
   )

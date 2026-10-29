@@ -46,8 +46,12 @@ describe('BoardScan with the engine live', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Scan board' }))
 
     expect(await screen.findByText(/Checked the first \d+ of 1,432 US jobs matching/)).toBeTruthy()
-    // The cards come with the first poll, a moment after the scan starts.
-    expect(await screen.findAllByRole('article')).toHaveLength(Math.min(6, spacex.items.filter((r) => r.verdict).length))
+    // The cards come with the first poll, a moment after the scan starts. jsdom has no screen size,
+    // so it gets the phone's first page of three; Show all brings the rest.
+    const checked = spacex.items.filter((r) => r.verdict).length
+    expect(await screen.findAllByRole('article')).toHaveLength(Math.min(3, checked))
+    fireEvent.click(screen.getByRole('button', { name: `Show all ${checked}` }))
+    expect(cards()).toHaveLength(checked)
     const [, init] = calls.mock.calls.find(([url]) => String(url).endsWith('/api/scan'))!
     expect(JSON.parse(String(init!.body))).toEqual({ url: 'https://www.spacex.com/careers', keyword: 'engineer', status: 'h1b' })
 

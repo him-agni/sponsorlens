@@ -96,7 +96,7 @@ export function CheckView({ status, onStatus, live }: Props) {
             setLinkedFrom(null)
           }}
           rows={7}
-          placeholder="Paste the whole description, or a link from LinkedIn, Greenhouse, Lever or a company careers page"
+          placeholder="Paste a job description or its link"
           className="mt-2 w-full resize-y rounded-xl border border-line bg-page p-3 text-sm leading-relaxed placeholder:text-muted focus:outline-2 focus:outline-accent"
         />
         {linkedFrom && (
@@ -124,13 +124,14 @@ export function CheckView({ status, onStatus, live }: Props) {
           {!live && <span className="text-sm text-muted">Waiting for the engine; the examples work now.</span>}
         </div>
         {examples.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-ink-2">Or try:</span>
+          // One swipeable row on phones, wrapping on larger screens.
+          <div className="-mx-5 mt-4 flex items-center gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+            <span className="shrink-0 text-sm text-ink-2">Or try:</span>
             {examples.map((ex) => (
               <button
                 key={ex.id}
                 onClick={() => tryExample(ex)}
-                className="rounded-full border border-line px-3 py-1 text-sm text-ink-2 hover:bg-line"
+                className="shrink-0 rounded-full border border-line px-3 py-1 text-sm whitespace-nowrap text-ink-2 hover:bg-line"
               >
                 {ex.title}
               </button>
@@ -143,7 +144,10 @@ export function CheckView({ status, onStatus, live }: Props) {
       {shown && verdict && (
         <>
           {isExample && (
-            <p className="-mb-3 text-sm text-muted">Example answer for a sample posting. Paste a job above to check your own.</p>
+            <p className="-mb-3 text-sm text-muted">
+              <span className="sm:hidden">An example answer:</span>
+              <span className="hidden sm:inline">Example answer for a sample posting. Paste a job above to check your own.</span>
+            </p>
           )}
           <VerdictCard result={shown} status={status} onStatus={onStatus} />
           {shown.glance && shown.glance.facts.length > 0 && <GlanceCard glance={shown.glance} />}
@@ -171,7 +175,7 @@ function VerdictCard({ result, status, onStatus }: { result: AnalyzeResponse; st
             <li key={i} className="border-l-2 border-axis pl-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted">{SIGNAL_NAMES[signal.type] ?? signal.type}</p>
               <blockquote className="mt-0.5 text-ink">“{signal.quote}”</blockquote>
-              {signal.reading && <p className="mt-1 text-sm text-ink-2">{signal.reading}</p>}
+              {signal.reading && <p className="mt-1 hidden text-sm text-ink-2 sm:block">{signal.reading}</p>}
             </li>
           ))}
         </ul>
@@ -241,7 +245,7 @@ function GlanceCard({ glance }: { glance: Glance }) {
           <div key={fact.kind} className="min-w-0">
             <dt className="text-xs text-muted">{fact.name}</dt>
             <dd className="mt-0.5 font-medium">{fact.value}</dd>
-            <dd className="mt-0.5 line-clamp-2 text-xs text-muted">“{fact.quote}”</dd>
+            <dd className="mt-0.5 hidden text-xs text-muted sm:line-clamp-2">“{fact.quote}”</dd>
           </div>
         ))}
       </dl>
@@ -284,10 +288,23 @@ function PostingText({ result, status }: { result: AnalyzeResponse; status: Stat
     [result, verdict],
   )
   const tint = LABEL_STYLE[verdict.label].mark
+  // Folded on phones, where the verdict card already quotes the lines that matter.
+  const [open, setOpen] = useState(false)
   return (
     <Card>
-      <p className="text-xs font-medium uppercase tracking-wide text-muted">The posting, with the lines that decide it marked</p>
-      <div className="mt-3 max-h-[28rem] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-ink-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">
+          The posting<span className="hidden sm:inline">, with the lines that decide it marked</span>
+        </p>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="shrink-0 rounded-full border border-line px-3 py-1 text-xs font-medium text-ink-2 sm:hidden"
+        >
+          {open ? 'Hide' : 'Show the posting'}
+        </button>
+      </div>
+      <div className={`mt-3 max-h-[28rem] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-ink-2 ${open ? '' : 'hidden'} sm:block`}>
         {segments.map((segment, i) =>
           segment.signal ? (
             <mark

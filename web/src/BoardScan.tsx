@@ -20,7 +20,8 @@ const EXAMPLES = [
   { token: 'spacex', name: 'SpaceX' },
   { token: 'robinhood', name: 'Robinhood' },
 ]
-const PAGE = 6
+// Cards shown before "Show all": fewer on phones, where each card takes most of the screen.
+const pageSize = () => (window.matchMedia?.('(min-width: 640px)').matches ? 6 : 3)
 
 export function BoardScan({ status, live }: { status: Status; live: boolean }) {
   const [url, setUrl] = useState('')
@@ -157,7 +158,7 @@ export function BoardScan({ status, live }: { status: Status; live: boolean }) {
             </button>
           ))}
         </div>
-        <p className="mt-3 text-xs text-muted">
+        <p className="mt-3 hidden text-xs text-muted sm:block">
           A company's careers page, or its Greenhouse, Lever or Ashby board.{' '}
           {live ? 'The public demo checks up to 10 jobs per scan.' : 'Scanning a new board needs the live engine.'}
         </p>
@@ -189,7 +190,7 @@ function shortDate(iso?: string): string {
 
 function Results({ rows, title, note, pending }: { rows: BatchRow[]; title: string; note: string; pending: number }) {
   const [filter, setFilter] = useState<Label | 'all'>('all')
-  const [limit, setLimit] = useState(PAGE)
+  const [limit, setLimit] = useState(pageSize)
   const done = rows.filter((r) => r.verdict).sort((a, b) => ORDER[a.verdict!.label] - ORDER[b.verdict!.label])
   const shown = done.filter((r) => filter === 'all' || r.verdict!.label === filter)
   const count = (label: Label) => done.filter((r) => r.verdict!.label === label).length
@@ -216,7 +217,7 @@ function Results({ rows, title, note, pending }: { rows: BatchRow[]; title: stri
               aria-selected={filter === g.label}
               onClick={() => {
                 setFilter(g.label)
-                setLimit(PAGE)
+                setLimit(pageSize())
               }}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition ${
                 filter === g.label ? 'border-ink bg-ink text-page' : 'border-line text-ink-2 hover:bg-line'
@@ -263,14 +264,14 @@ function JobCard({ row, index }: { row: BatchRow; index: number }) {
       className="flex animate-rise flex-col rounded-3xl border border-line bg-surface p-2 transition hover:-translate-y-0.5 hover:shadow-lg"
       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
     >
-      <div className={`flex-1 rounded-2xl p-4 ${LABEL_STYLE[verdict.label].tint}`}>
+      <div className={`flex-1 rounded-2xl p-3.5 sm:p-4 ${LABEL_STYLE[verdict.label].tint}`}>
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-xs font-semibold">
             <LabelIcon label={verdict.label} className="size-3.5" />
             {group.name}
           </span>
         </div>
-        <div className="mt-4 flex items-start justify-between gap-3">
+        <div className="mt-3 flex items-start justify-between gap-3 sm:mt-4">
           <div className="min-w-0">
             <p className="text-xs text-ink-2">{company}</p>
             <h4 className="mt-0.5 line-clamp-2 text-lg leading-snug font-semibold">{row.title}</h4>
@@ -282,7 +283,7 @@ function JobCard({ row, index }: { row: BatchRow; index: number }) {
             {company.charAt(0).toUpperCase()}
           </span>
         </div>
-        <div className="mt-4 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4">
           {tags.map((tag) => (
             <span key={tag} className="rounded-full border border-ink/25 px-2.5 py-0.5 text-xs">
               {tag}
