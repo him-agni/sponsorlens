@@ -162,6 +162,9 @@ async def run(name: str, setup: Setup, client: Client, concurrency: int) -> None
         },
         max_concurrency=concurrency,
         client=client,
+        # Scores are still recorded; this only skips a trace per evaluator per posting, which would
+        # multiply the traces LangSmith counts toward the plan's limit by six.
+        disable_evaluator_tracing=True,
     )
     record = summarize(name, setup, results.experiment_name, [row async for row in results])
     RESULTS.mkdir(exist_ok=True)
