@@ -13,6 +13,8 @@ SponsorLens is scored in LangSmith on 27 invented US job postings. Each one is l
 
 The postings are invented, so no real company's text is stored or uploaded.
 
+**[Open the public LangSmith dashboard](https://smith.langchain.com/public/95e912e9-08e0-40b1-b9ed-51ef301aaeed/d)** to see the dataset and every experiment side by side. Each experiment's traces show every Nemotron call, with its prompt, reply and token counts. No login is needed.
+
 Each setup's latest run is saved in [`backend/results/`](../backend/results/), with the expected and actual verdict, signals, quotes, cost and time for every posting. The table for each posting is in [accuracy-by-posting.md](accuracy-by-posting.md).
 
 ## Results (Oct 28, 2026, prompt p1)
