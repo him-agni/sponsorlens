@@ -26,7 +26,7 @@ The full plan, with its phase gates, lives in [build-plan.md](build-plan.md). Th
 | P3 Intake, shards, cache, log | Mon Oct 26 | Done Oct 27 | `scripts/kill_test.py`: killed mid-batch at 82/200, restarted, 82 returned from the log, 117 analysed, 1 cache hit, 0 postings finished twice |
 | P4 Web app and dashboard | Tue Oct 27 | Done Oct 28 | Checked in light, dark, desktop and 390 px phone width, live and sample mode, no console errors. Gate passed Oct 28: a new user (the owner's husband) used the deployed site on his phone and explained a verdict back unaided. His requests: a clear button and pasting a link (both built), and a wider scope (roadmap) |
 | P5 Deploy, limits, benchmark | Wed Oct 28 | Done | Done Oct 28. Limits deployed and keys on Render: `/health` shows `live_batches: false`, `/metrics` shows a $0.50 budget, `POST /api/batch` is 403, a live check returned Blocked with the right quote for $0.0024. Phone check on Wi-Fi (cellular unavailable; the site is public either way). Tester fixes shipped: Start over, links, wrong-page check, no-JSON fallback. Benchmark in `docs/bench.md` |
-| P6 Video, README, submit | Thu Oct 29 | In progress (started Oct 28) | README rewritten with real screenshots (`docs/screenshots/`, taken on the real models locally); video script and shot list in `docs/video-script.md` and Devpost fields in `docs/devpost.md`, both on the owner's machine only (excluded in `.git/info/exclude`, never committed). Owner still to: record and upload the video, replace `VIDEO_LINK` in the README and Devpost, submit |
+| P6 Video, README, submit | Thu Oct 29 | In progress (started Oct 28) | README rewritten with real screenshots (`docs/screenshots/`, taken on the real models locally); video script and shot list in `docs/video-script.md` and Devpost fields in `docs/devpost.md`, both on the owner's machine only (excluded in `.git/info/exclude`, never committed). Demo video public on YouTube Oct 29 (https://youtu.be/O9TjzsTq6ms), linked from the README and `docs/devpost.md`. Owner still to: submit on Devpost |
 
 ## Working rules
 
@@ -198,7 +198,7 @@ Without a key and with `MODEL_BACKEND=live`, every engine endpoint returns 503 w
 
 ## Next steps
 
-1. Phase 6, Thu Oct 29. Done Oct 28: README rewrite with screenshots, video script (`docs/video-script.md`), Devpost draft (`docs/devpost.md`). Left: the owner records the video from the script, uploads it publicly to YouTube, replaces `VIDEO_LINK` in the README and `docs/devpost.md`, pastes `FEEDBACK.md` into the feedback form, fills Devpost and submits (gate: Submitted, not Draft). Owner account check: LangSmith usage limits (see the LangSmith row above).
+1. Phase 6, Thu Oct 29. Done Oct 28: README rewrite with screenshots, video script (`docs/video-script.md`), Devpost draft (`docs/devpost.md`). Video uploaded Oct 29 (https://youtu.be/O9TjzsTq6ms) and linked in the README and `docs/devpost.md`. Left: the owner pastes `FEEDBACK.md` into the feedback form, fills Devpost and submits (gate: Submitted, not Draft). Owner account check: LangSmith usage limits (see the LangSmith row above).
 3. Waiting on the owner (Oct 28, night):
    - Done Oct 29: the link-company fix, the LangSmith tracing change, the README with screenshots and these notes are committed and pushed. The video script and Devpost draft stay local, at the owner's request. The `evaluators` LangSmith project is deleted.
    - LangSmith retention, for the owner. Base retention deletes traces after 14 days (about Nov 11), before judging ends Dec 15. In order:

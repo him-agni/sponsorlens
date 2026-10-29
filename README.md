@@ -2,7 +2,7 @@
 
 **Is this job open to me?** SponsorLens reads a US job posting and answers that for people on a work visa or permit. Each verdict quotes the exact lines from the posting that decide it.
 
-**[Try it live](https://sponsorlens-web.onrender.com)** · **[Watch the demo](VIDEO_LINK)** · **[Accuracy dashboard in LangSmith](https://smith.langchain.com/public/95e912e9-08e0-40b1-b9ed-51ef301aaeed/d)**
+**[Try it live](https://sponsorlens-web.onrender.com)** · **[Watch the demo](https://youtu.be/O9TjzsTq6ms)** · **[Accuracy dashboard in LangSmith](https://smith.langchain.com/public/95e912e9-08e0-40b1-b9ed-51ef301aaeed/d)**
 
 Built solo for the Nebius x NVIDIA Global AI Hackathon with NVIDIA Nemotron on Nebius Token Factory and Tavily. Information only, not legal advice.
 
@@ -11,7 +11,7 @@ Built solo for the Nebius x NVIDIA Global AI Hackathon with NVIDIA Nemotron on N
 | Link | What it is |
 | --- | --- |
 | [sponsorlens-web.onrender.com](https://sponsorlens-web.onrender.com) | The live app. The server sleeps when idle, so the first check can take about a minute |
-| [Demo video](VIDEO_LINK) | A walkthrough in under 3 minutes |
+| [Demo video](https://youtu.be/O9TjzsTq6ms) | A walkthrough in under 3 minutes |
 | [LangSmith dashboard](https://smith.langchain.com/public/95e912e9-08e0-40b1-b9ed-51ef301aaeed/d) | The accuracy experiments and every trace; no login needed |
 | [docs/accuracy.md](docs/accuracy.md) | How accurate it is, and what the experiments showed |
 | [docs/bench.md](docs/bench.md) | The engine benchmark |
