@@ -46,16 +46,20 @@ export function CheckView({ status, onStatus, live }: Props) {
     setError(null)
     try {
       let posting = input.trim()
+      let employer: string | null = null
       // A link is read into the paste box first, so people can see what was checked.
       if (LINK.test(posting)) {
         setBusy('link')
         const linked = await api<LinkedPosting>('/api/read-link', { method: 'POST', body: JSON.stringify({ url: posting }) })
         posting = linked.text
+        employer = linked.company
         setText(posting)
         setLinkedFrom(linked.url)
       }
       setBusy('posting')
-      setResult(await api<AnalyzeResponse>('/api/analyze', { method: 'POST', body: JSON.stringify({ text: posting, status }) }))
+      // The link's employer lets an Unclear verdict get company context even when the posting never names it.
+      const body = { text: posting, status, ...(employer ? { company: employer } : {}) }
+      setResult(await api<AnalyzeResponse>('/api/analyze', { method: 'POST', body: JSON.stringify(body) }))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {

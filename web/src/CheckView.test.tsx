@@ -55,9 +55,9 @@ describe('CheckView with the engine live', () => {
     if (noSponsorship.response.glance?.facts.length) expect(screen.getByText('At a glance')).toBeTruthy()
   })
 
-  it('reads a link into the box first, then checks that text', async () => {
+  it('reads a link into the box first, then checks that text with the link’s employer', async () => {
     const calls = serve({
-      '/api/read-link': { url: 'https://jobs.lever.co/acme/1', title: null, company: null, text: noSponsorship.text },
+      '/api/read-link': { url: 'https://jobs.lever.co/acme/1', title: null, company: 'Acme', text: noSponsorship.text },
       '/api/analyze': noSponsorship.response,
     })
     check(true)
@@ -67,7 +67,7 @@ describe('CheckView with the engine live', () => {
     expect(await screen.findByText('jobs.lever.co')).toBeTruthy()
     await screen.findByRole('heading', { name: 'Not open to people who need H-1B sponsorship' })
     const analyzed = calls.mock.calls.find(([url]) => String(url).endsWith('/api/analyze'))!
-    expect(JSON.parse(String(analyzed[1]!.body)).text).toBe(noSponsorship.text)
+    expect(JSON.parse(String(analyzed[1]!.body))).toMatchObject({ text: noSponsorship.text, company: 'Acme' })
   })
 
   it('shows what the API says when it refuses', async () => {

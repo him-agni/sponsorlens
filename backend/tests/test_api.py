@@ -66,6 +66,25 @@ def test_analyze_looks_up_company_only_when_unclear(client_for) -> None:
     assert looked_up == ["Acme"]
 
 
+def test_the_link_employer_stands_in_when_the_model_names_no_company(client_for) -> None:
+    looked_up: list[str] = []
+
+    async def fake_lookup(company: str) -> CompanyContext:
+        looked_up.append(company)
+        return CompanyContext(company=company, query="q", sources=[])
+
+    app.dependency_overrides[get_context_lookup] = lambda: fake_lookup
+    client = client_for(ScriptedModel({"company": None, "sentences": []}, {"company": "Acme", "sentences": []}))
+    hinted = client.post("/api/analyze", json={"text": "We are hiring.", "status": "opt", "company": "Stripe"}).json()
+    named = client.post("/api/analyze", json={"text": "Acme is hiring.", "status": "opt", "company": "Stripe"}).json()
+
+    assert hinted["analysis"]["company"] == "Stripe"
+    assert hinted["company_context"]["company"] == "Stripe"
+    # The model's own reading of the posting wins over the hint.
+    assert named["analysis"]["company"] == "Acme"
+    assert looked_up == ["Stripe", "Acme"]
+
+
 def test_analyze_returns_every_status_and_the_text_it_checked(client_for) -> None:
     client = client_for(FakeModel(latency=0, seed=1))
     body = client.post("/api/analyze", json={"text": "<p>Acme is hiring.</p><p>We will not sponsor visas.</p>", "status": "ead"}).json()

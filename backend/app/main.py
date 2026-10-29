@@ -144,6 +144,9 @@ async def metrics(engine: Engine = Depends(get_engine)) -> dict:
 class AnalyzeRequest(BaseModel):
     text: str = Field(min_length=1, max_length=50_000)
     status: Status
+    # The employer named by the link the text was read from. The model names the company only when it
+    # finds work-authorization sentences, so a silent posting from a link would otherwise get no context.
+    company: str | None = Field(default=None, max_length=200)
 
 
 class AnalyzeResponse(BaseModel):
@@ -185,6 +188,9 @@ async def analyze(
                 "without the rest of the page.",
             )
         raise HTTPException(502, "The model service didn't answer. Try again in a minute.")
+    if not analysis.company and request.company:
+        # A copy, because the cached analysis is shared by every request for this posting.
+        analysis = analysis.model_copy(update={"company": request.company})
     verdicts = {status: decide(analysis, status) for status in Status}
     verdict = verdicts[request.status]
     context = None
