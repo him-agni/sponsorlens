@@ -1,0 +1,820 @@
+{
+  "setup": "nano-only",
+  "description": "Nano for both steps",
+  "date": "2026-10-28",
+  "experiment": "nano-only-5bdcea46",
+  "prompt_version": "p1",
+  "find_model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+  "classify_model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+  "reasoning": true,
+  "summary": {
+    "postings": 27,
+    "all_statuses_right": 27,
+    "quotes_verified": 27,
+    "signals_match": 27,
+    "cost_usd": 0.0068,
+    "median_seconds": 9.9,
+    "slowest_seconds": 18.2
+  },
+  "postings": [
+    {
+      "id": "f01-sponsorship-offered",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "clear",
+        "opt": "clear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "clear",
+        "h1b": "clear",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "sponsorship_offered"
+      ],
+      "signals_found": [
+        "sponsorship_offered"
+      ],
+      "quotes": [
+        "We sponsor H-1B visas"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000314,
+      "seconds": 11.2,
+      "error": null
+    },
+    {
+      "id": "f02-no-sponsorship",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "no_sponsorship"
+      ],
+      "signals_found": [
+        "no_sponsorship"
+      ],
+      "quotes": [
+        "without the need for employer sponsorship, now or in the future"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000243,
+      "seconds": 9.5,
+      "error": null
+    },
+    {
+      "id": "f03-us-citizens-only",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "blocked"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "blocked"
+      },
+      "signals_expected": [
+        "us_citizens_only"
+      ],
+      "signals_found": [
+        "us_citizens_only"
+      ],
+      "quotes": [
+        "U.S. citizens only"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000283,
+      "seconds": 10.8,
+      "error": null
+    },
+    {
+      "id": "f04-clearance-required",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "blocked"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "blocked"
+      },
+      "signals_expected": [
+        "security_clearance"
+      ],
+      "signals_found": [
+        "security_clearance"
+      ],
+      "quotes": [
+        "Active Secret clearance required."
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000286,
+      "seconds": 11.1,
+      "error": null
+    },
+    {
+      "id": "f05-export-control",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "export_control"
+      ],
+      "signals_found": [
+        "export_control"
+      ],
+      "quotes": [
+        "U.S. persons as defined by 22 CFR 120.62"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000274,
+      "seconds": 18.2,
+      "error": null
+    },
+    {
+      "id": "f06-citizens-or-permanent-residents",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "citizens_or_permanent_residents"
+      ],
+      "signals_found": [
+        "citizens_or_permanent_residents"
+      ],
+      "quotes": [
+        "Must be a U.S. citizen or lawful permanent resident."
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000381,
+      "seconds": 14.3,
+      "error": null
+    },
+    {
+      "id": "f07-e-verify-only",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "unclear",
+        "opt": "unclear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "unclear",
+        "h1b": "unclear",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "e_verify"
+      ],
+      "signals_found": [
+        "e_verify"
+      ],
+      "quotes": [
+        "participates in E-Verify"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000156,
+      "seconds": 6.7,
+      "error": null
+    },
+    {
+      "id": "f08-silent",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "unclear",
+        "opt": "unclear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "unclear",
+        "h1b": "unclear",
+        "green_card": "clear"
+      },
+      "signals_expected": [],
+      "signals_found": [],
+      "quotes": [],
+      "unverified_quotes": 0,
+      "cost_usd": 8.1e-05,
+      "seconds": 3.5,
+      "error": null
+    },
+    {
+      "id": "f09-hard-sponsorship-in-benefits",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "clear",
+        "opt": "clear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "clear",
+        "h1b": "clear",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "sponsorship_offered"
+      ],
+      "signals_found": [
+        "sponsorship_offered"
+      ],
+      "quotes": [
+        "Immigration and visa sponsorship support"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000223,
+      "seconds": 16.1,
+      "error": null
+    },
+    {
+      "id": "f10-hard-ability-to-obtain-clearance",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "blocked"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "blocked"
+      },
+      "signals_expected": [
+        "security_clearance"
+      ],
+      "signals_found": [
+        "security_clearance"
+      ],
+      "quotes": [
+        "Ability to obtain and maintain a U.S. government security clearance"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000191,
+      "seconds": 7.2,
+      "error": null
+    },
+    {
+      "id": "f11-hard-contradictory",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "unclear",
+        "opt": "unclear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "unclear",
+        "h1b": "unclear",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "no_sponsorship",
+        "sponsorship_offered"
+      ],
+      "signals_found": [
+        "no_sponsorship",
+        "sponsorship_offered"
+      ],
+      "quotes": [
+        "sponsor visas",
+        "without sponsorship"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000468,
+      "seconds": 18.0,
+      "error": null
+    },
+    {
+      "id": "f12-no-sponsorship-and-e-verify",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "e_verify",
+        "no_sponsorship"
+      ],
+      "signals_found": [
+        "e_verify",
+        "no_sponsorship"
+      ],
+      "quotes": [
+        "will not sponsor applicants for work visas",
+        "is an E-Verify employer"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000289,
+      "seconds": 10.7,
+      "error": null
+    },
+    {
+      "id": "f13-hard-sponsor-for-clearance",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "blocked"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "blocked"
+      },
+      "signals_expected": [
+        "security_clearance"
+      ],
+      "signals_found": [
+        "security_clearance"
+      ],
+      "quotes": [
+        "sponsor the selected candidate for a Secret security clearance"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.00021,
+      "seconds": 9.7,
+      "error": null
+    },
+    {
+      "id": "f14-export-control-and-no-sponsorship",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "export_control",
+        "no_sponsorship"
+      ],
+      "signals_found": [
+        "export_control",
+        "no_sponsorship"
+      ],
+      "quotes": [
+        "applicants must be U.S. persons",
+        "unable to provide visa sponsorship"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000369,
+      "seconds": 13.7,
+      "error": null
+    },
+    {
+      "id": "f15-distractor-sponsor-events",
+      "set": "core",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "unclear",
+        "opt": "unclear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "unclear",
+        "h1b": "unclear",
+        "green_card": "clear"
+      },
+      "signals_expected": [],
+      "signals_found": [],
+      "quotes": [],
+      "unverified_quotes": 0,
+      "cost_usd": 9.5e-05,
+      "seconds": 3.5,
+      "error": null
+    },
+    {
+      "id": "h01-clearance-deep-in-requirements",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "blocked"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "blocked"
+      },
+      "signals_expected": [
+        "security_clearance"
+      ],
+      "signals_found": [
+        "security_clearance"
+      ],
+      "quotes": [
+        "Active Top Secret/SCI clearance with polygraph"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000266,
+      "seconds": 9.9,
+      "error": null
+    },
+    {
+      "id": "h02-cannot-take-over-sponsorship",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "no_sponsorship"
+      ],
+      "signals_found": [
+        "no_sponsorship"
+      ],
+      "quotes": [
+        "unable to sponsor or take over sponsorship of an employment visa"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000151,
+      "seconds": 6.4,
+      "error": null
+    },
+    {
+      "id": "h03-authorized-but-silent-on-sponsorship",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "unclear",
+        "opt": "unclear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "unclear",
+        "h1b": "unclear",
+        "green_card": "clear"
+      },
+      "signals_expected": [],
+      "signals_found": [],
+      "quotes": [],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000332,
+      "seconds": 12.3,
+      "error": null
+    },
+    {
+      "id": "h04-sponsorship-available",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "clear",
+        "opt": "clear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "clear",
+        "h1b": "clear",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "sponsorship_offered"
+      ],
+      "signals_found": [
+        "sponsorship_offered"
+      ],
+      "quotes": [
+        "Visa sponsorship is available for this position."
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000142,
+      "seconds": 5.6,
+      "error": null
+    },
+    {
+      "id": "h05-citizens-only-for-contracts",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "blocked"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "blocked"
+      },
+      "signals_expected": [
+        "us_citizens_only"
+      ],
+      "signals_found": [
+        "us_citizens_only"
+      ],
+      "quotes": [
+        "this role is open to U.S. citizens only"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000194,
+      "seconds": 7.9,
+      "error": null
+    },
+    {
+      "id": "h06-export-control-by-regulation",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "export_control"
+      ],
+      "signals_found": [
+        "export_control"
+      ],
+      "quotes": [
+        "This position requires access to technical data controlled under ITAR.",
+        "Applicants must be a U.S. person as defined in 22 CFR 120.62."
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.00035,
+      "seconds": 14.9,
+      "error": null
+    },
+    {
+      "id": "h07-green-card-sponsorship",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "clear",
+        "opt": "clear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "clear",
+        "h1b": "clear",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "sponsorship_offered"
+      ],
+      "signals_found": [
+        "sponsorship_offered"
+      ],
+      "quotes": [
+        "We sponsor green cards for employees after their first year."
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000241,
+      "seconds": 9.7,
+      "error": null
+    },
+    {
+      "id": "h08-no-opt-or-cpt",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "no_sponsorship"
+      ],
+      "signals_found": [
+        "no_sponsorship"
+      ],
+      "quotes": [
+        "We do not hire candidates on OPT, CPT or any visa that requires future sponsorship."
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000202,
+      "seconds": 7.0,
+      "error": null
+    },
+    {
+      "id": "h09-distractor-sponsors-and-citizens",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "unclear",
+        "opt": "unclear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "unclear",
+        "h1b": "unclear",
+        "green_card": "clear"
+      },
+      "signals_expected": [],
+      "signals_found": [],
+      "quotes": [],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000148,
+      "seconds": 5.5,
+      "error": null
+    },
+    {
+      "id": "h10-clearance-that-needs-citizenship",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "blocked",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "blocked"
+      },
+      "got": {
+        "ead": "blocked",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "blocked"
+      },
+      "signals_expected": [
+        "security_clearance",
+        "us_citizens_only"
+      ],
+      "signals_found": [
+        "security_clearance",
+        "us_citizens_only"
+      ],
+      "quotes": [
+        "Secret clearance",
+        "U.S. citizenship"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000327,
+      "seconds": 12.7,
+      "error": null
+    },
+    {
+      "id": "h11-sponsorship-as-faq",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "clear",
+        "opt": "clear",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "clear",
+        "h1b": "clear",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "sponsorship_offered"
+      ],
+      "signals_found": [
+        "sponsorship_offered"
+      ],
+      "quotes": [
+        "We sponsor H-1B visas and support transfers."
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000421,
+      "seconds": 16.3,
+      "error": null
+    },
+    {
+      "id": "h12-sponsorship-field",
+      "set": "hard",
+      "all_statuses_right": true,
+      "expected": {
+        "ead": "clear",
+        "h1b": "blocked",
+        "opt": "blocked",
+        "green_card": "clear"
+      },
+      "got": {
+        "ead": "clear",
+        "opt": "blocked",
+        "h1b": "blocked",
+        "green_card": "clear"
+      },
+      "signals_expected": [
+        "no_sponsorship"
+      ],
+      "signals_found": [
+        "no_sponsorship"
+      ],
+      "quotes": [
+        "Not available"
+      ],
+      "unverified_quotes": 0,
+      "cost_usd": 0.000204,
+      "seconds": 9.4,
+      "error": null
+    }
+  ]
+}
