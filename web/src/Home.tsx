@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import type { Label, Status } from './api'
 import { BoardScan } from './BoardScan'
 import { CheckView } from './CheckView'
@@ -96,7 +96,7 @@ export function Home({ status, onStatus, live }: { status: Status; onStatus: (s:
       </Section>
 
       <Section id="how" pill="How it works" title={<>Three steps to <span className="mark">a straight answer</span></>}>
-        <ol className="grid gap-4 md:grid-cols-3">
+        <ol className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {STEPS.map((step, i) => (
             <li key={step.title} className="rounded-3xl border border-line bg-surface p-6 transition hover:-translate-y-1 hover:shadow-lg">
               <div className="flex items-center justify-between">
@@ -115,7 +115,7 @@ export function Home({ status, onStatus, live }: { status: Status; onStatus: (s:
       </Section>
 
       <Section id="faq" pill="FAQ" title={<>Questions, <span className="mark">answered</span></>} tinted>
-        <div className="mx-auto grid max-w-3xl gap-3">
+        <div className="mx-auto grid grid-cols-1 max-w-3xl gap-3">
           {FAQS.map((item) => (
             <details key={item.q} className="group rounded-2xl border border-line bg-surface px-5 py-4 open:shadow-sm">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold [&::-webkit-details-marker]:hidden">
@@ -135,7 +135,7 @@ export function Home({ status, onStatus, live }: { status: Status; onStatus: (s:
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden pt-14 pb-10 text-center sm:pt-20">
+    <section className="relative overflow-hidden pt-10 pb-10 text-center sm:pt-20">
       <div className="mx-auto max-w-5xl px-4">
         <p className="mx-auto inline-flex animate-rise items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-2">
           <span className="size-1.5 rounded-full bg-good" aria-hidden="true" />
@@ -157,17 +157,27 @@ function Hero() {
         </div>
       </div>
 
-      {/* The product instead of photos: what it looks for, orbiting three example verdicts. */}
-      <div className="relative mx-auto mt-10 h-52 max-w-4xl px-4 sm:mt-12 sm:h-80">
-        <div aria-hidden="true" className="absolute inset-x-6 top-4 bottom-0 rounded-t-full border-x border-t border-dashed border-axis sm:top-10" />
-        <div aria-hidden="true" className="absolute inset-x-24 top-24 bottom-0 hidden rounded-t-full border-x border-t border-dashed border-grid sm:block" />
+      {/* Phones: the terms as chips that explain themselves when tapped, then the verdicts as a fanned deck. */}
+      <div className="mx-auto mt-10 max-w-md px-4 sm:hidden">
+        <TermChips />
+        <div aria-hidden="true" className="mt-6 flex flex-col items-center">
+          <MiniVerdict label="clear" title="Open to OPT" quote="We sponsor H-1B for this role" className="w-[min(16rem,85%)] -rotate-3 [animation-delay:150ms]" />
+          <MiniVerdict label="unclear" title="Ask the recruiter" quote="The posting says nothing about visas" className="-mt-20 w-[min(16rem,85%)] translate-x-3 rotate-2 [animation-delay:300ms]" />
+          <MiniVerdict label="blocked" title="Not open to H-1B" quote="Active TS/SCI clearance required" className="-mt-[6.5rem] w-[min(16rem,85%)] -translate-x-2 -rotate-1 [animation-delay:450ms]" />
+        </div>
+      </div>
+
+      {/* Larger screens: what it looks for, orbiting three example verdicts. */}
+      <div className="relative mx-auto mt-12 hidden h-80 max-w-4xl px-4 sm:block">
+        <div aria-hidden="true" className="absolute inset-x-6 top-10 bottom-0 rounded-t-full border-x border-t border-dashed border-axis" />
+        <div aria-hidden="true" className="absolute inset-x-24 top-24 bottom-0 rounded-t-full border-x border-t border-dashed border-grid" />
         {ORBIT.map((chip) => (
           <button
             key={chip.text}
             type="button"
             aria-label={chip.text}
             aria-describedby={`orbit-${chip.text}`}
-            className="group absolute hidden animate-float items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium shadow-sm hover:z-20 hover:border-brand hover:[animation-play-state:paused] focus-visible:z-20 focus-visible:[animation-play-state:paused] sm:inline-flex"
+            className="group absolute inline-flex animate-float items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium shadow-sm hover:z-20 hover:border-brand hover:[animation-play-state:paused] focus-visible:z-20 focus-visible:[animation-play-state:paused]"
             style={{ left: chip.x, top: chip.y, animationDelay: chip.delay }}
           >
             <span className="size-1.5 rounded-full bg-brand" aria-hidden="true" />
@@ -183,20 +193,49 @@ function Hero() {
             </span>
           </button>
         ))}
-        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-3 px-4 sm:gap-5">
-          <MiniVerdict label="clear" title="Open to OPT" quote="We sponsor H-1B for this role" className="hidden -rotate-6 sm:block [animation-delay:350ms]" />
-          <MiniVerdict label="blocked" title="Not open to H-1B" quote="Active TS/SCI clearance required" className="z-10 scale-105 [animation-delay:200ms]" />
-          <MiniVerdict label="unclear" title="Ask the recruiter" quote="The posting says nothing about visas" className="hidden rotate-6 sm:block [animation-delay:500ms]" />
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 flex items-end justify-center gap-5 px-4">
+          <MiniVerdict label="clear" title="Open to OPT" quote="We sponsor H-1B for this role" className="w-56 -rotate-6 [animation-delay:350ms]" />
+          <MiniVerdict label="blocked" title="Not open to H-1B" quote="Active TS/SCI clearance required" className="z-10 w-56 scale-105 [animation-delay:200ms]" />
+          <MiniVerdict label="unclear" title="Ask the recruiter" quote="The posting says nothing about visas" className="w-56 rotate-6 [animation-delay:500ms]" />
         </div>
       </div>
     </section>
   )
 }
 
+/** On phones, where nothing can be hovered: tap a term to read its meaning under the row. */
+function TermChips() {
+  const [open, setOpen] = useState<string | null>(null)
+  const term = ORBIT.find((chip) => chip.text === open)
+  return (
+    <div>
+      <div className="flex flex-wrap justify-center gap-2">
+        {ORBIT.map((chip) => (
+          <button
+            key={chip.text}
+            type="button"
+            aria-pressed={open === chip.text}
+            onClick={() => setOpen(open === chip.text ? null : chip.text)}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
+              open === chip.text ? 'border-brand bg-brand-soft' : 'border-line bg-surface'
+            }`}
+          >
+            <span className="size-1.5 rounded-full bg-brand" aria-hidden="true" />
+            {chip.text}
+          </button>
+        ))}
+      </div>
+      <p aria-live="polite" className="mt-3 min-h-10 text-sm text-ink-2">
+        {term ? term.meaning : 'Tap a term to see what it means.'}
+      </p>
+    </div>
+  )
+}
+
 function MiniVerdict({ label, title, quote, className = '' }: { label: Label; title: string; quote: string; className?: string }) {
   const { tint, name } = LABEL_STYLE[label]
   return (
-    <div className={`w-56 animate-rise rounded-3xl border border-line bg-surface p-2 text-left shadow-xl ${className}`}>
+    <div className={`animate-rise rounded-3xl border border-line bg-surface p-2 text-left shadow-xl ${className}`}>
       <div className={`rounded-2xl p-4 ${tint}`}>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 text-xs font-semibold">
           <LabelIcon label={label} className="size-3.5" />

@@ -19,10 +19,20 @@ test('the home page explains itself and shows an example answer @phone', async (
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Is this job open to')
   await expect(page.getByText('Example answer for a sample posting')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Not open to people who need H-1B sponsorship' })).toBeVisible()
-  // Nothing spills sideways, on a phone or a desktop.
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
-  expect(overflow).toBeLessThanOrEqual(0)
   expect(errors).toEqual([])
+})
+
+test('nothing spills sideways, at normal or enlarged text, once everything has loaded @phone', async ({ page }) => {
+  for (const textSize of ['100%', '130%']) {
+    await page.goto('/')
+    await page.evaluate((size) => (document.documentElement.style.fontSize = size), textSize)
+    // The recorded scan's job cards were the widest thing on the page; wait for them.
+    await page.getByRole('heading', { name: 'Scale AI jobs' }).scrollIntoViewIfNeeded()
+    await expect(page.getByRole('article').first()).toBeVisible()
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(overflow, `page wider than the screen at ${textSize} text`).toBeLessThanOrEqual(0)
+  }
 })
 
 test('checking a pasted posting gives a verdict per status, and Start over clears it', async ({ page }) => {

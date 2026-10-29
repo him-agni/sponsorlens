@@ -48,7 +48,7 @@ export function BatchView({ status, live, engineLive }: Props) {
   const [shown, setShown] = useState(PAGE)
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <BatchControls live={live} engineLive={engineLive} status={status} onStarted={setBatchId} />
       {error && <p className="text-sm text-critical-ink">{error}</p>}
       {view && (
@@ -229,7 +229,7 @@ function Summary({ view, filter, onFilter }: { view: View; filter: Filter; onFil
 function Row({ row }: { row: BatchRow }) {
   const signal = row.verdict?.deciding[0]
   return (
-    <li className="grid gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-start sm:gap-4">
+    <li className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-start sm:gap-4">
       <div className="min-w-0">
         <a href={safeHref(row.url)} target="_blank" rel="noreferrer" className="font-medium hover:underline">
           {row.title}

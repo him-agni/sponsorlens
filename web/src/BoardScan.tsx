@@ -107,9 +107,9 @@ export function BoardScan({ status, live }: { status: Status; live: boolean }) {
   const exampleName = EXAMPLES.find((e) => e.token === example)?.name
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="rounded-3xl border border-line bg-surface p-5 sm:p-6">
-        <div className="grid gap-3 sm:grid-cols-[1fr_12rem_auto_auto]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_12rem_auto_auto]">
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
@@ -228,7 +228,7 @@ function Results({ rows, title, note, pending }: { rows: BatchRow[]; title: stri
           )
         })}
       </div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {shown.slice(0, limit).map((row, i) => (
           <JobCard key={row.job_id} row={row} index={i} />
         ))}

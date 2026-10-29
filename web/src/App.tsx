@@ -45,15 +45,16 @@ function App() {
               window.scrollTo({ top: 0, behavior: 'smooth' })
             }}
             aria-label="SponsorLens, back to the top"
-            className="flex items-center gap-2 text-lg font-bold tracking-tight"
+            className="flex min-w-0 items-center gap-2 text-base font-bold tracking-tight sm:text-lg"
           >
-            <span className="flex size-8 items-center justify-center rounded-xl bg-brand text-white">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-brand text-white">
               <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
                 <circle cx="10.5" cy="10.5" r="6" />
                 <path d="M15 15l5 5M8 10.5l1.8 1.8 3.2-3.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
-            SponsorLens
+            {/* On the narrowest phones the logo alone leaves room for the engine link and theme switch. */}
+            <span className="truncate max-[349px]:sr-only">SponsorLens</span>
           </button>
           <nav className="hidden items-center gap-1 md:flex" aria-label="Sections">
             {view === 'check' &&
@@ -63,7 +64,7 @@ function App() {
                 </a>
               ))}
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             {view === 'check' ? (
               <button onClick={() => setView('engine')} className="rounded-lg px-2.5 py-1.5 text-sm font-medium whitespace-nowrap text-accent hover:bg-line">
                 <span className="sm:hidden">Engine</span>

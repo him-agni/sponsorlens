@@ -79,7 +79,7 @@ export default function DashboardView({ live }: { live: boolean }) {
   const perShardWorkers = shards ? Math.round((g.workers_total ?? 0) / shards) : 0
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-lg font-semibold">{live ? 'The engine, live' : 'The engine, replaying a recorded run'}</h2>
         <p className="text-sm text-muted">
@@ -122,7 +122,7 @@ export default function DashboardView({ live }: { live: boolean }) {
           Companies are spread over {shards} shards by consistent hashing. A full queue makes its fetchers wait: that is the
           backpressure.
         </p>
-        <div className="mt-4 grid gap-3">
+        <div className="mt-4 grid grid-cols-1 gap-3">
           {Array.from({ length: shards }, (_, i) => {
             const depth = g[`shard${i}_queue_depth`] ?? 0
             const busy = g[`shard${i}_workers_busy`] ?? 0
@@ -151,7 +151,7 @@ export default function DashboardView({ live }: { live: boolean }) {
         </div>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <Trend title="Postings queued" points={points} dataKey="queue" />
         <Trend title="Model calls in flight" points={points} dataKey="inFlight" />
         <Trend title="Tokens per second" points={points} dataKey="tokensPerSecond" />

@@ -14,7 +14,12 @@ export default defineConfig({
   use: { baseURL: WEB, channel: 'msedge', trace: 'retain-on-failure' },
   projects: [
     { name: 'desktop', use: { viewport: { width: 1280, height: 900 } } },
-    { name: 'phone', use: { ...devices['Pixel 7'], channel: 'msedge' }, grep: /@phone/ },
+    // 360 px wide, like many Android phones; narrower than any of Playwright's preset phones.
+    {
+      name: 'phone',
+      use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 }, channel: 'msedge' },
+      grep: /@phone/,
+    },
   ],
   webServer: [
     {

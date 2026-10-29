@@ -82,7 +82,7 @@ export function CheckView({ status, onStatus, live }: Props) {
   const context = shown?.company_context ?? (company ? (contexts[company] ?? null) : null)
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <Card>
         <label htmlFor="posting" className="text-sm font-medium">
           Paste a job description or its link
@@ -166,7 +166,7 @@ function VerdictCard({ result, status, onStatus }: { result: AnalyzeResponse; st
       <h2 className="mt-3 text-2xl font-semibold tracking-tight">{headline(verdict.label, status)}</h2>
 
       {verdict.deciding.length > 0 ? (
-        <ul className="mt-4 grid gap-3">
+        <ul className="mt-4 grid grid-cols-1 gap-3">
           {verdict.deciding.map((signal, i) => (
             <li key={i} className="border-l-2 border-axis pl-3">
               <p className="text-xs font-medium uppercase tracking-wide text-muted">{SIGNAL_NAMES[signal.type] ?? signal.type}</p>
@@ -255,7 +255,7 @@ function ContextPanel({ company, context }: { company: string | null; context: C
       <p className="text-xs font-medium uppercase tracking-wide text-muted">Company context · from the web, not the posting</p>
       <h3 className="mt-1 font-semibold">Has {company ?? 'this company'} sponsored visas before?</h3>
       {context && context.sources.length > 0 ? (
-        <ul className="mt-3 grid gap-3">
+        <ul className="mt-3 grid grid-cols-1 gap-3">
           {context.sources.map((source) => (
             <li key={source.url}>
               <a href={safeHref(source.url)} target="_blank" rel="noreferrer" className="font-medium text-accent hover:underline">

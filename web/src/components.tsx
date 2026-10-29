@@ -99,8 +99,30 @@ export function ThemeToggle() {
     applyTheme(next)
   }
 
+  const current = THEMES.find((t) => t.id === theme) ?? THEMES[0]
+  const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length]
+
   return (
-    <div role="radiogroup" aria-label="Color theme" className="inline-flex rounded-lg border border-line bg-surface p-0.5">
+    <>
+      {/* Phones: one button that steps through the three, to leave the header room. */}
+      <button
+        onClick={() => choose(next.id)}
+        aria-label={`Color theme: ${current.name}. Switch to ${next.name}`}
+        title={`Color theme: ${current.name}`}
+        className="rounded-lg border border-line bg-surface p-2 text-ink-2 hover:bg-line sm:hidden"
+      >
+        <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {current.icon}
+        </svg>
+      </button>
+      <ThemeChoices theme={theme} choose={choose} />
+    </>
+  )
+}
+
+function ThemeChoices({ theme, choose }: { theme: Theme; choose: (t: Theme) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Color theme" className="hidden rounded-lg border border-line bg-surface p-0.5 sm:inline-flex">
       {THEMES.map((t) => (
         <button
           key={t.id}
