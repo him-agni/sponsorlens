@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     nano_model: str = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
     ultra_model: str = "nvidia/Nemotron-3-Ultra-550b-a55b"
     tavily_api_key: str = ""
+    # Only scripts/experiment.py reads this, on a local machine. The hosted app never sends anything to LangSmith.
+    langsmith_api_key: str = ""
     # USD per million tokens (input, output), from the same catalog. Reasoning tokens bill as output.
     model_prices: dict[str, tuple[float, float]] = {
         "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B": (0.06, 0.24),
